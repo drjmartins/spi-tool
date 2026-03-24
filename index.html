@@ -1,0 +1,1580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Surgical Preparedness Index (SPI)</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary: #1B4F72;
+      --secondary: #2980B9;
+      --light-bg: #F4F6F9;
+      --card-bg: #FFFFFF;
+      --border: #D5D8DC;
+      --text: #1A1A2E;
+      --text-muted: #5D6D7E;
+      --domain-facilities: #2874A6;
+      --domain-staffing: #1E8449;
+      --domain-prioritisation: #7D3C98;
+      --domain-systems: #CA6F1E;
+      --score-very-low: #E74C3C;
+      --score-low: #E67E22;
+      --score-moderate: #F39C12;
+      --score-high: #27AE60;
+      --rating-1: #C0392B;
+      --rating-2: #E67E22;
+      --rating-3: #F1C40F;
+      --rating-4: #82E0AA;
+      --rating-5: #27AE60;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: var(--light-bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ── */
+    .site-header {
+      background: linear-gradient(135deg, var(--primary) 0%, #154360 100%);
+      color: #fff;
+      padding: 18px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    }
+    .site-header .logo-badge {
+      background: rgba(255,255,255,0.15);
+      border: 2px solid rgba(255,255,255,0.4);
+      border-radius: 10px;
+      padding: 6px 12px;
+      font-size: 1.35rem;
+      font-weight: 800;
+      letter-spacing: 1px;
+      flex-shrink: 0;
+    }
+    .site-header .header-text h1 { font-size: 1.25rem; font-weight: 700; line-height: 1.2; }
+    .site-header .header-text p { font-size: 0.78rem; opacity: 0.82; margin-top: 2px; }
+
+    /* ── Wizard progress ── */
+    .wizard-progress {
+      background: #fff;
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+    }
+    .wizard-progress .steps {
+      display: flex;
+      align-items: center;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+    .wizard-progress .step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex: 1;
+      position: relative;
+    }
+    .wizard-progress .step:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      top: 16px;
+      left: 50%;
+      width: 100%;
+      height: 2px;
+      background: var(--border);
+      z-index: 0;
+    }
+    .wizard-progress .step.done:not(:last-child)::after { background: var(--secondary); }
+    .wizard-progress .step-dot {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      background: var(--border);
+      color: var(--text-muted);
+      font-weight: 700;
+      font-size: 0.85rem;
+      display: flex; align-items: center; justify-content: center;
+      position: relative; z-index: 1;
+      transition: background 0.3s, color 0.3s;
+    }
+    .wizard-progress .step.active .step-dot {
+      background: var(--secondary);
+      color: #fff;
+      box-shadow: 0 0 0 4px rgba(41,128,185,0.25);
+    }
+    .wizard-progress .step.done .step-dot {
+      background: var(--primary);
+      color: #fff;
+    }
+    .wizard-progress .step-label {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-top: 5px;
+      text-align: center;
+      font-weight: 500;
+    }
+    .wizard-progress .step.active .step-label { color: var(--secondary); font-weight: 700; }
+    .wizard-progress .step.done .step-label { color: var(--primary); }
+
+    /* ── Main content ── */
+    main { flex: 1; padding: 28px 16px 40px; }
+    .container { max-width: 860px; margin: 0 auto; }
+
+    /* ── Steps ── */
+    .step-panel { display: none; animation: fadeIn 0.35s ease; }
+    .step-panel.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+      padding: 28px 32px;
+      margin-bottom: 24px;
+    }
+    .card-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-title .icon {
+      width: 28px; height: 28px;
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.9rem;
+      flex-shrink: 0;
+    }
+
+    /* ── Welcome step ── */
+    .welcome-hero {
+      text-align: center;
+      padding: 36px 20px 28px;
+    }
+    .welcome-hero .spi-score-display {
+      font-size: 4.5rem;
+      font-weight: 900;
+      color: var(--primary);
+      line-height: 1;
+      letter-spacing: -2px;
+    }
+    .welcome-hero h2 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin-top: 10px;
+      margin-bottom: 8px;
+    }
+    .welcome-hero p { color: var(--text-muted); font-size: 1rem; max-width: 560px; margin: 0 auto; line-height: 1.65; }
+    .lancet-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #FEF9E7;
+      border: 1px solid #F7DC6F;
+      border-radius: 20px;
+      padding: 6px 16px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #7D6608;
+      margin-top: 14px;
+    }
+    .domains-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 14px;
+      margin: 20px 0;
+    }
+    .domain-card {
+      border-radius: 10px;
+      padding: 16px;
+      color: #fff;
+      text-align: center;
+    }
+    .domain-card .d-count { font-size: 2rem; font-weight: 900; line-height: 1; }
+    .domain-card .d-label { font-size: 0.75rem; opacity: 0.88; margin-top: 2px; }
+    .domain-card .d-name { font-size: 0.9rem; font-weight: 700; margin-top: 8px; }
+    .dc-facilities { background: var(--domain-facilities); }
+    .dc-staffing { background: var(--domain-staffing); }
+    .dc-prioritisation { background: var(--domain-prioritisation); }
+    .dc-systems { background: var(--domain-systems); }
+
+    .benchmarks-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin: 10px 0;
+    }
+    .benchmark-pill {
+      background: var(--light-bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+    .benchmark-pill span { color: var(--secondary); }
+
+    .instructions-list {
+      list-style: none;
+      padding: 0;
+    }
+    .instructions-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--light-bg);
+    }
+    .instructions-list li:last-child { border-bottom: none; }
+    .instructions-list .step-content strong {
+      display: block;
+      font-size: 0.92rem;
+      color: var(--primary);
+      margin-bottom: 2px;
+    }
+    .instructions-list .step-content p {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin: 0;
+    }
+    .instructions-list .step-num {
+      background: var(--primary);
+      color: #fff;
+      border-radius: 50%;
+      width: 26px; height: 26px;
+      flex-shrink: 0;
+      font-size: 0.78rem;
+      font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 28px;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+    .btn-primary {
+      background: var(--secondary);
+      color: #fff;
+    }
+    .btn-primary:hover { background: #2471A3; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(41,128,185,0.35); }
+    .btn-outline {
+      background: transparent;
+      color: var(--secondary);
+      border: 2px solid var(--secondary);
+    }
+    .btn-outline:hover { background: rgba(41,128,185,0.06); }
+    .btn-success {
+      background: var(--score-high);
+      color: #fff;
+    }
+    .btn-success:hover { background: #229954; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(39,174,96,0.35); }
+    .btn-danger { background: var(--score-very-low); color: #fff; }
+    .btn-danger:hover { background: #C0392B; }
+    .btn-lg { padding: 14px 36px; font-size: 1.05rem; }
+    .btn-sm { padding: 8px 18px; font-size: 0.82rem; }
+
+    .btn-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    /* ── Form ── */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
+    .form-group.full-width { grid-column: 1 / -1; }
+    .form-group label {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .form-group label .required { color: var(--score-very-low); margin-left: 2px; }
+    .form-control {
+      padding: 10px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 7px;
+      font-size: 0.9rem;
+      color: var(--text);
+      background: #fff;
+      transition: border-color 0.2s;
+      width: 100%;
+    }
+    .form-control:focus {
+      outline: none;
+      border-color: var(--secondary);
+      box-shadow: 0 0 0 3px rgba(41,128,185,0.15);
+    }
+    .form-control.error { border-color: var(--score-very-low); }
+
+    /* ── Assessment ── */
+    .progress-bar-wrap {
+      background: var(--light-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 18px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .progress-bar-wrap .prog-label {
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--primary);
+      white-space: nowrap;
+    }
+    .progress-bar-wrap .prog-count {
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: var(--secondary);
+      white-space: nowrap;
+    }
+    .prog-bar-bg {
+      flex: 1;
+      height: 10px;
+      background: var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .prog-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--secondary), var(--score-high));
+      border-radius: 10px;
+      transition: width 0.4s ease;
+    }
+
+    .domain-section { margin-bottom: 28px; }
+    .domain-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px;
+      border-radius: 10px 10px 0 0;
+      color: #fff;
+      font-weight: 700;
+      font-size: 0.95rem;
+    }
+    .domain-header .d-num {
+      background: rgba(255,255,255,0.25);
+      border-radius: 5px;
+      padding: 2px 8px;
+      font-size: 0.78rem;
+    }
+
+    .indicator-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-top: none;
+      padding: 16px 18px;
+      transition: background 0.15s;
+    }
+    .indicator-card:last-child { border-radius: 0 0 10px 10px; }
+    .indicator-card:not(:last-child) { border-bottom: 1px solid #EBF5FB; }
+    .indicator-card.rated { background: #F8FFF8; }
+
+    .ind-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+    .ind-num {
+      background: var(--light-bg);
+      color: var(--text-muted);
+      border-radius: 5px;
+      padding: 2px 7px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .ind-title-wrap { flex: 1; }
+    .ind-title { font-size: 0.92rem; font-weight: 700; color: var(--text); margin-bottom: 3px; }
+    .ind-desc { font-size: 0.8rem; color: var(--text-muted); line-height: 1.5; }
+    .ind-check { color: var(--score-high); font-size: 1.1rem; flex-shrink: 0; opacity: 0; transition: opacity 0.2s; }
+    .indicator-card.rated .ind-check { opacity: 1; }
+
+    .rating-buttons {
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+    .rating-btn {
+      flex: 1;
+      min-width: 44px;
+      padding: 8px 4px;
+      border: 2px solid transparent;
+      border-radius: 7px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-align: center;
+      transition: all 0.15s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+    }
+    .rating-btn .r-num { font-size: 1.1rem; line-height: 1; }
+    .rating-btn .r-label { font-size: 0.6rem; opacity: 0.85; line-height: 1.2; }
+
+    .rating-btn[data-val="1"] { background: #FDEDEC; color: var(--rating-1); border-color: #FADBD8; }
+    .rating-btn[data-val="2"] { background: #FEF5E7; color: var(--rating-2); border-color: #FDEBD0; }
+    .rating-btn[data-val="3"] { background: #FEFDE7; color: #B7950B; border-color: #FCEFB1; }
+    .rating-btn[data-val="4"] { background: #EAFAF1; color: #1E8449; border-color: #D5F5E3; }
+    .rating-btn[data-val="5"] { background: #D5F5E3; color: var(--rating-5); border-color: #A9DFBF; }
+
+    .rating-btn:hover { filter: brightness(0.93); transform: translateY(-1px); }
+    .rating-btn.selected[data-val="1"] { background: var(--rating-1); color: #fff; border-color: var(--rating-1); }
+    .rating-btn.selected[data-val="2"] { background: var(--rating-2); color: #fff; border-color: var(--rating-2); }
+    .rating-btn.selected[data-val="3"] { background: #E6B800; color: #fff; border-color: #E6B800; }
+    .rating-btn.selected[data-val="4"] { background: #1E8449; color: #fff; border-color: #1E8449; }
+    .rating-btn.selected[data-val="5"] { background: var(--rating-5); color: #fff; border-color: var(--rating-5); }
+
+    .validation-msg {
+      display: none;
+      color: var(--score-very-low);
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 10px 14px;
+      background: #FEF2F2;
+      border: 1px solid #FADBD8;
+      border-radius: 7px;
+      margin-bottom: 14px;
+    }
+    .validation-msg.show { display: block; }
+
+    /* ── Results ── */
+    .score-hero {
+      text-align: center;
+      padding: 28px 20px;
+    }
+    .score-big {
+      font-size: 5rem;
+      font-weight: 900;
+      line-height: 1;
+      letter-spacing: -3px;
+    }
+    .score-denom { font-size: 2rem; color: var(--text-muted); }
+    .score-label-text { font-size: 0.85rem; color: var(--text-muted); margin-top: 4px; }
+    .score-badge {
+      display: inline-block;
+      padding: 7px 22px;
+      border-radius: 20px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #fff;
+      margin-top: 12px;
+    }
+
+    .domain-results-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 14px;
+      margin: 16px 0;
+    }
+    .domain-result-card {
+      border-radius: 10px;
+      padding: 16px;
+      color: #fff;
+    }
+    .domain-result-card .dr-name { font-size: 0.78rem; opacity: 0.88; font-weight: 600; }
+    .domain-result-card .dr-score { font-size: 1.9rem; font-weight: 900; line-height: 1.1; margin: 4px 0; }
+    .domain-result-card .dr-max { font-size: 0.78rem; opacity: 0.75; }
+    .dr-bar-bg { background: rgba(255,255,255,0.3); border-radius: 6px; height: 7px; margin-top: 8px; overflow: hidden; }
+    .dr-bar-fill { height: 100%; background: rgba(255,255,255,0.85); border-radius: 6px; transition: width 0.6s ease; }
+
+    .benchmarks-chart-wrap {
+      margin: 10px 0;
+    }
+    .benchmark-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .benchmark-row .bm-label { width: 100px; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); flex-shrink: 0; }
+    .benchmark-row .bm-bar-bg { flex: 1; height: 20px; background: var(--light-bg); border-radius: 5px; overflow: hidden; }
+    .benchmark-row .bm-bar { height: 100%; border-radius: 5px; display: flex; align-items: center; padding-left: 8px; font-size: 0.72rem; font-weight: 700; color: #fff; transition: width 0.7s ease; }
+    .benchmark-row .bm-val { font-size: 0.82rem; font-weight: 700; color: var(--text); width: 42px; text-align: right; flex-shrink: 0; }
+    .bm-user .bm-bar { background: var(--primary); }
+    .bm-global .bm-bar { background: var(--secondary); }
+    .bm-hic .bm-bar { background: var(--score-high); }
+    .bm-mic .bm-bar { background: var(--score-moderate); }
+    .bm-lic .bm-bar { background: var(--score-low); }
+
+    .chart-container {
+      position: relative;
+      height: 280px;
+      max-width: 420px;
+      margin: 0 auto;
+    }
+
+    .indicator-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    .indicator-table th {
+      background: var(--light-bg);
+      padding: 9px 12px;
+      text-align: left;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      border-bottom: 2px solid var(--border);
+    }
+    .indicator-table td {
+      padding: 9px 12px;
+      border-bottom: 1px solid var(--light-bg);
+      vertical-align: middle;
+    }
+    .indicator-table tr:hover td { background: #F8F9FA; }
+    .score-chip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px; height: 28px;
+      border-radius: 6px;
+      font-weight: 800;
+      font-size: 0.9rem;
+      color: #fff;
+    }
+    .chip-1 { background: var(--rating-1); }
+    .chip-2 { background: var(--rating-2); }
+    .chip-3 { background: #E6B800; }
+    .chip-4 { background: #1E8449; }
+    .chip-5 { background: var(--rating-5); }
+    .domain-tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .highlight-section {
+      border-radius: 10px;
+      padding: 18px 20px;
+      margin-bottom: 16px;
+    }
+    .highlight-section h4 {
+      font-size: 0.92rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .hs-improvement { background: #FEF9E7; border: 1px solid #FAD7A0; }
+    .hs-improvement h4 { color: #B7770D; }
+    .hs-strengths { background: #EAFAF1; border: 1px solid #A9DFBF; }
+    .hs-strengths h4 { color: #1E8449; }
+    .highlight-list { list-style: none; padding: 0; }
+    .highlight-list li {
+      padding: 5px 0;
+      font-size: 0.82rem;
+      color: var(--text);
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    .highlight-list li::before { content: '•'; flex-shrink: 0; margin-top: 0px; font-weight: 900; }
+    .hs-improvement .highlight-list li::before { color: #E67E22; }
+    .hs-strengths .highlight-list li::before { color: var(--score-high); }
+
+    /* ── Footer ── */
+    footer {
+      background: #fff;
+      border-top: 1px solid var(--border);
+      padding: 20px 24px;
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      line-height: 1.7;
+    }
+    footer a { color: var(--secondary); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+    footer .footer-nihr { font-weight: 600; color: var(--primary); }
+
+    /* ── Responsive ── */
+    @media (max-width: 600px) {
+      .card { padding: 18px 16px; }
+      .form-grid { grid-template-columns: 1fr; }
+      .form-group.full-width { grid-column: 1; }
+      .score-big { font-size: 3.5rem; }
+      .domains-grid { grid-template-columns: 1fr 1fr; }
+      .domain-results-grid { grid-template-columns: 1fr 1fr; }
+      .rating-btn .r-label { display: none; }
+      .site-header .header-text h1 { font-size: 1rem; }
+      .benchmark-row .bm-label { width: 70px; font-size: 0.72rem; }
+    }
+
+    /* ── PDF-specific hidden div ── */
+    #pdf-content { display: none; }
+    .pdf-page {
+      font-family: Arial, sans-serif;
+      color: #1A1A2E;
+      padding: 28px 32px;
+      max-width: 750px;
+    }
+    .pdf-header-bar {
+      background: #1B4F72;
+      color: #fff;
+      padding: 18px 24px;
+      border-radius: 8px;
+      margin-bottom: 18px;
+    }
+    .pdf-header-bar h1 { font-size: 1.3rem; margin: 0 0 3px; }
+    .pdf-header-bar p { font-size: 0.8rem; opacity: 0.85; margin: 0; }
+    .pdf-section { margin-bottom: 18px; }
+    .pdf-section h2 { font-size: 1rem; font-weight: 700; color: #1B4F72; border-bottom: 2px solid #D5D8DC; padding-bottom: 5px; margin-bottom: 10px; }
+    .pdf-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .pdf-info-item { background: #F4F6F9; border-radius: 5px; padding: 8px 12px; font-size: 0.82rem; }
+    .pdf-info-item .lbl { font-weight: 700; color: #5D6D7E; font-size: 0.72rem; display: block; }
+    .pdf-score-box { text-align: center; background: #1B4F72; color: #fff; border-radius: 10px; padding: 18px; margin-bottom: 14px; }
+    .pdf-score-box .score-n { font-size: 3.5rem; font-weight: 900; line-height: 1; }
+    .pdf-score-box .score-d { font-size: 1.4rem; opacity: 0.7; }
+    .pdf-score-box .score-int { font-size: 0.95rem; margin-top: 6px; }
+    .pdf-domain-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; margin-top: 8px; }
+    .pdf-domain-table th { background: #F4F6F9; padding: 7px 10px; text-align: left; border: 1px solid #D5D8DC; font-weight: 700; }
+    .pdf-domain-table td { padding: 7px 10px; border: 1px solid #D5D8DC; }
+    .pdf-ind-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+    .pdf-ind-table th { background: #F4F6F9; padding: 6px 8px; border: 1px solid #D5D8DC; font-weight: 700; text-align: left; }
+    .pdf-ind-table td { padding: 6px 8px; border: 1px solid #D5D8DC; vertical-align: top; }
+    .pdf-ind-table tr:nth-child(even) td { background: #FAFBFC; }
+    .pdf-benchmark-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    .pdf-benchmark-table th { background: #F4F6F9; padding: 7px 10px; text-align: left; border: 1px solid #D5D8DC; }
+    .pdf-benchmark-table td { padding: 7px 10px; border: 1px solid #D5D8DC; }
+    .pdf-footer { font-size: 0.7rem; color: #888; border-top: 1px solid #D5D8DC; padding-top: 10px; margin-top: 18px; }
+  </style>
+</head>
+<body>
+
+<!-- Site Header -->
+<header class="site-header">
+  <div class="logo-badge">SPI</div>
+  <div class="header-text">
+    <h1>Surgical Preparedness Index</h1>
+    <p>NIHR Global Health Research Unit on Global Surgery &nbsp;·&nbsp; University of Birmingham</p>
+  </div>
+</header>
+
+<!-- Wizard Progress -->
+<div class="wizard-progress">
+  <div class="steps">
+    <div class="step active" id="prog-1">
+      <div class="step-dot">1</div>
+      <div class="step-label">Welcome</div>
+    </div>
+    <div class="step" id="prog-2">
+      <div class="step-dot">2</div>
+      <div class="step-label">Hospital Info</div>
+    </div>
+    <div class="step" id="prog-3">
+      <div class="step-dot">3</div>
+      <div class="step-label">Assessment</div>
+    </div>
+    <div class="step" id="prog-4">
+      <div class="step-dot">4</div>
+      <div class="step-label">Results</div>
+    </div>
+  </div>
+</div>
+
+<!-- Main -->
+<main>
+  <div class="container">
+
+    <!-- STEP 1: Welcome -->
+    <div class="step-panel active" id="step-1">
+      <div class="card">
+        <div class="welcome-hero">
+          <div class="spi-score-display">SPI</div>
+          <h2>Surgical Preparedness Index</h2>
+          <p>A validated tool to help hospitals assess their resilience and preparedness for planned surgical services during periods of external system stress.</p>
+          <div class="lancet-badge">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            Published in <em>The Lancet</em> 2022; 400:1607–17
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <div class="icon" style="background:#EBF5FB;">📊</div>
+          About the SPI
+        </div>
+        <p style="font-size:0.9rem;color:var(--text-muted);line-height:1.7;margin-bottom:16px;">
+          The SPI was developed by the NIHR Global Health Research Unit on Global Surgery at the University of Birmingham. It provides a standardised, quantitative measure of a hospital's capacity to maintain planned (elective) surgical services when the health system faces external shocks — such as pandemics, conflict, natural disasters, or resource shortfalls.
+        </p>
+        <p style="font-size:0.9rem;color:var(--text-muted);line-height:1.7;margin-bottom:20px;">
+          The index comprises <strong>23 indicators</strong> across <strong>4 domains</strong>, each scored from 1 (Very Weak) to 5 (Very Strong), yielding a total score of 23–115.
+        </p>
+
+        <div class="domains-grid">
+          <div class="domain-card dc-facilities">
+            <div class="d-count">11</div>
+            <div class="d-label">indicators</div>
+            <div class="d-name">Facilities &amp; Consumables</div>
+          </div>
+          <div class="domain-card dc-staffing">
+            <div class="d-count">2</div>
+            <div class="d-label">indicators</div>
+            <div class="d-name">Staffing</div>
+          </div>
+          <div class="domain-card dc-prioritisation">
+            <div class="d-count">2</div>
+            <div class="d-label">indicators</div>
+            <div class="d-name">Prioritisation</div>
+          </div>
+          <div class="domain-card dc-systems">
+            <div class="d-count">8</div>
+            <div class="d-label">indicators</div>
+            <div class="d-name">Systems</div>
+          </div>
+        </div>
+
+        <div style="margin-top:16px;">
+          <div style="font-size:0.82rem;font-weight:700;color:var(--text-muted);margin-bottom:8px;">GLOBAL REFERENCE SCORES</div>
+          <div class="benchmarks-row">
+            <div class="benchmark-pill">Global mean: <span>84.5</span></div>
+            <div class="benchmark-pill">High income: <span>88.5</span></div>
+            <div class="benchmark-pill">Middle income: <span>81.8</span></div>
+            <div class="benchmark-pill">Low income: <span>66.8</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <div class="icon" style="background:#EBF5FB;">📋</div>
+          How to Complete This Assessment
+        </div>
+        <ul class="instructions-list">
+          <li>
+            <span class="step-num">1</span>
+            <div class="step-content">
+              <strong>Enter Hospital Details</strong>
+              <p>Provide basic information about your hospital — name, country, income setting, and your professional role.</p>
+            </div>
+          </li>
+          <li>
+            <span class="step-num">2</span>
+            <div class="step-content">
+              <strong>Rate 23 Indicators</strong>
+              <p>Score each indicator from 1 (Very Weak) to 5 (Very Strong), reflecting your hospital's current ability to maintain planned surgery during a period of external system stress.</p>
+            </div>
+          </li>
+          <li>
+            <span class="step-num">3</span>
+            <div class="step-content">
+              <strong>Review Your Results</strong>
+              <p>See your total SPI score, a breakdown by domain, comparison to global benchmarks, and a prioritised list of areas for improvement.</p>
+            </div>
+          </li>
+          <li>
+            <span class="step-num">4</span>
+            <div class="step-content">
+              <strong>Export Your Report</strong>
+              <p>Download a PDF report to share with colleagues or use for local audit and quality improvement.</p>
+            </div>
+          </li>
+        </ul>
+        <div style="background:#EBF5FB;border:1px solid #AED6F1;border-radius:8px;padding:12px 14px;margin-top:14px;font-size:0.82rem;color:#1B4F72;line-height:1.6;">
+          <strong>Note:</strong> For optimal accuracy, complete the assessment with multidisciplinary input from surgery, anaesthesia, nursing, and hospital administration teams. This tool is intended for surgical leads, hospital managers, and health system planners.
+        </div>
+      </div>
+
+      <div style="text-align:right;">
+        <button class="btn btn-primary btn-lg" onclick="goToStep(2)">
+          Begin Assessment
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- STEP 2: Hospital Info -->
+    <div class="step-panel" id="step-2">
+      <div class="card">
+        <div class="card-title">
+          <div class="icon" style="background:#EAF7FB;">🏥</div>
+          Hospital Information
+        </div>
+        <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:20px;">Please complete all required fields before proceeding to the assessment.</p>
+
+        <div class="form-grid" id="hospital-form">
+          <div class="form-group full-width">
+            <label>Hospital Name <span class="required">*</span></label>
+            <input type="text" class="form-control" id="f-hospital" placeholder="e.g. Muhimbili National Hospital" />
+          </div>
+          <div class="form-group">
+            <label>City / Region <span class="required">*</span></label>
+            <input type="text" class="form-control" id="f-city" placeholder="e.g. Dar es Salaam" />
+          </div>
+          <div class="form-group">
+            <label>Country <span class="required">*</span></label>
+            <input type="text" class="form-control" id="f-country" placeholder="e.g. Tanzania" />
+          </div>
+          <div class="form-group">
+            <label>World Bank Income Group <span class="required">*</span></label>
+            <select class="form-control" id="f-income">
+              <option value="">— Select —</option>
+              <option value="HIC">High Income Country (HIC)</option>
+              <option value="UMIC">Upper Middle Income Country (UMIC)</option>
+              <option value="LMIC">Lower Middle Income Country (LMIC)</option>
+              <option value="LIC">Low Income Country (LIC)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Hospital Type <span class="required">*</span></label>
+            <select class="form-control" id="f-type">
+              <option value="">— Select —</option>
+              <option value="Public">Public / Government</option>
+              <option value="Private">Private / Not-for-profit</option>
+              <option value="Mixed">Mixed / Faith-based</option>
+              <option value="Military">Military / Specialist</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Number of Beds <span class="required">*</span></label>
+            <select class="form-control" id="f-beds">
+              <option value="">— Select —</option>
+              <option value="<50">Fewer than 50</option>
+              <option value="50-99">50 – 99</option>
+              <option value="100-199">100 – 199</option>
+              <option value="200-499">200 – 499</option>
+              <option value="500-999">500 – 999</option>
+              <option value="≥1000">1000 or more</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Assessor Role</label>
+            <input type="text" class="form-control" id="f-role" placeholder="e.g. Surgical Lead, Hospital Manager" />
+          </div>
+          <div class="form-group">
+            <label>Assessment Date <span class="required">*</span></label>
+            <input type="date" class="form-control" id="f-date" />
+          </div>
+        </div>
+
+        <div class="validation-msg" id="form-validation">Please complete all required fields before continuing.</div>
+
+        <div class="btn-row" style="margin-top:24px;justify-content:space-between;">
+          <button class="btn btn-outline" onclick="goToStep(1)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            Back
+          </button>
+          <button class="btn btn-primary" onclick="validateAndGoStep3()">
+            Continue to Assessment
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 3: Assessment -->
+    <div class="step-panel" id="step-3">
+      <div class="progress-bar-wrap">
+        <div class="prog-label">Progress:</div>
+        <div class="prog-bar-bg">
+          <div class="prog-bar-fill" id="prog-fill" style="width:0%"></div>
+        </div>
+        <div class="prog-count"><span id="prog-answered">0</span> / 23 rated</div>
+      </div>
+
+      <div class="validation-msg" id="assessment-validation">Please rate all 23 indicators before viewing results.</div>
+
+      <div id="assessment-indicators">
+        <!-- Dynamically generated -->
+      </div>
+
+      <div class="btn-row" style="justify-content:space-between;margin-top:8px;">
+        <button class="btn btn-outline" onclick="goToStep(2)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          Back
+        </button>
+        <button class="btn btn-primary btn-lg" onclick="validateAndGoStep4()">
+          View Results
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- STEP 4: Results -->
+    <div class="step-panel" id="step-4">
+
+      <div class="card" id="results-section">
+        <!-- Score hero injected by JS -->
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <div class="icon" style="background:#EBF5FB;">📊</div>
+          Domain Breakdown
+        </div>
+        <div class="domain-results-grid" id="domain-results-grid"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <div class="icon" style="background:#EBF5FB;">📈</div>
+          Benchmark Comparison
+        </div>
+        <p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:14px;">Your score compared to global reference benchmarks (maximum 115).</p>
+        <div class="benchmarks-chart-wrap" id="benchmarks-chart-wrap"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <div class="icon" style="background:#EBF5FB;">🕸</div>
+          Domain Radar
+        </div>
+        <p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:8px;">Domain scores expressed as percentages of the maximum possible score.</p>
+        <div class="chart-container">
+          <canvas id="radar-chart"></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <div class="icon" style="background:#EBF5FB;">✏️</div>
+          Priority Areas
+        </div>
+        <div id="priority-areas"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <div class="icon" style="background:#EBF5FB;">📋</div>
+          All 23 Indicators
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="indicator-table" id="indicator-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Indicator</th>
+                <th>Domain</th>
+                <th>Score</th>
+              </tr>
+            </thead>
+            <tbody id="indicator-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="btn-row" style="justify-content:space-between;flex-wrap:wrap;gap:12px;">
+        <button class="btn btn-outline" onclick="goToStep(3)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          Edit Responses
+        </button>
+        <div class="btn-row" style="gap:10px;">
+          <button class="btn btn-outline" onclick="resetAssessment()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M1 4v6h6M23 20v-6h-6M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
+            New Assessment
+          </button>
+          <button class="btn btn-success" onclick="exportPDF()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+            Export PDF Report
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</main>
+
+<!-- Footer -->
+<footer>
+  <div class="footer-nihr">NIHR Global Health Research Unit on Global Surgery, University of Birmingham</div>
+  <div style="margin-top:4px;">
+    Reference: NIHR Global Health Unit on Global Surgery &amp; COVIDSurg Collaborative.
+    <em>The Lancet</em> 2022; 400:1607–17.
+    <a href="https://doi.org/10.1016/S0140-6736(22)01846-3" target="_blank" rel="noopener">https://doi.org/10.1016/S0140-6736(22)01846-3</a>
+  </div>
+  <div style="margin-top:4px;">
+    Licensed under <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>.
+    This tool is for research and quality improvement purposes only.
+  </div>
+</footer>
+
+<!-- Hidden PDF content -->
+<div id="pdf-content"></div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  DATA
+// ═══════════════════════════════════════════════
+const DOMAINS = [
+  {
+    id: 'facilities',
+    name: 'Facilities & Consumables',
+    color: '#2874A6',
+    maxScore: 55,
+    indicators: [1,2,3,4,5,6,7,8,9,10,11]
+  },
+  {
+    id: 'staffing',
+    name: 'Staffing',
+    color: '#1E8449',
+    maxScore: 10,
+    indicators: [12,13]
+  },
+  {
+    id: 'prioritisation',
+    name: 'Prioritisation',
+    color: '#7D3C98',
+    maxScore: 10,
+    indicators: [14,15]
+  },
+  {
+    id: 'systems',
+    name: 'Systems',
+    color: '#CA6F1E',
+    maxScore: 40,
+    indicators: [16,17,18,19,20,21,22,23]
+  }
+];
+
+const INDICATORS = [
+  { id: 1, name: 'Ring-fenced theatres', desc: 'Operating theatres exclusively reserved for planned/elective surgery, protected from emergency use during periods of system stress.' },
+  { id: 2, name: 'Ring-fenced beds', desc: 'Ward beds exclusively reserved for planned surgery patients, ensuring continuity even when emergency demand increases.' },
+  { id: 3, name: 'Ring-fenced critical care', desc: 'ICU/HDU beds reserved specifically for post-operative planned surgery patients.' },
+  { id: 4, name: 'Flexible areas', desc: 'Ability to rearrange hospital areas to create segregated pathways keeping planned surgical patients separate from higher-risk patients.' },
+  { id: 5, name: 'Managing complications', desc: 'Access to diagnostics (radiology, labs) and interventional services to identify and treat surgical complications.' },
+  { id: 6, name: 'Electricity supply', desc: 'Reliable, uninterrupted electricity supply to the hospital and surgical areas.' },
+  { id: 7, name: 'Oxygen supply', desc: 'Reliable supply of supplementary oxygen (piped, cylinders, concentrators) with backup systems.' },
+  { id: 8, name: 'Drug supply', desc: 'Reliable supply and management of essential perioperative medications (anaesthetics, analgesics, antibiotics).' },
+  { id: 9, name: 'Device supply', desc: 'Reliable supply and management of surgical devices and implants (sutures, staples, prostheses).' },
+  { id: 10, name: 'Sterilisation', desc: 'Sufficient surgical instruments and effective local sterilisation/decontamination processes.' },
+  { id: 11, name: 'Protective equipment', desc: 'Availability of appropriate PPE for all operating theatre team members.' },
+  { id: 12, name: 'Staff redistribution', desc: 'Ability to redistribute clinical staff (surgeons, anaesthetists, nurses) within or between hospitals to maintain surgical capacity.' },
+  { id: 13, name: 'Ring-fenced teams', desc: 'Dedicated surgical teams reserved specifically for planned surgical care and protected from redeployment.' },
+  { id: 14, name: 'Patient prioritisation', desc: 'Formal cross-specialty system for prioritising patients awaiting planned surgery by clinical urgency.' },
+  { id: 15, name: 'Procedure prioritisation', desc: 'Ability to systematically identify and defer or cancel procedures of limited clinical value to protect capacity.' },
+  { id: 16, name: 'Formal plan', desc: 'A documented, operational plan for maintaining planned surgical services during external system shocks.' },
+  { id: 17, name: 'Preoperative assessment', desc: 'Ability to conduct preoperative assessment in community settings or remotely rather than requiring hospital attendance.' },
+  { id: 18, name: 'Preoperative testing', desc: 'Access to routine preoperative testing for endemic and epidemic infectious diseases.' },
+  { id: 19, name: 'Hospital transfer', desc: 'Ability to transfer patients to hospitals with greater surgical capacity when local capacity is exceeded.' },
+  { id: 20, name: 'Timely discharge', desc: 'Systems and processes to facilitate timely post-operative discharge to free up beds for new patients.' },
+  { id: 21, name: 'Social support', desc: 'Support system (social workers, community services, home care) enabling safe and timely discharge.' },
+  { id: 22, name: 'Remote outpatients', desc: 'Capacity to conduct outpatient appointments via telephone or video call.' },
+  { id: 23, name: 'Family communication', desc: 'Capacity and capability to communicate effectively with family members throughout the surgical pathway.' }
+];
+
+const RATING_LABELS = {1:'Very Weak', 2:'Weak', 3:'Moderate', 4:'Strong', 5:'Very Strong'};
+
+const BENCHMARKS = [
+  { key: 'user',   label: 'Your Hospital', val: null, cls: 'bm-user' },
+  { key: 'global', label: 'Global Mean',   val: 84.5, cls: 'bm-global' },
+  { key: 'hic',    label: 'HIC Mean',      val: 88.5, cls: 'bm-hic' },
+  { key: 'mic',    label: 'MIC Mean',      val: 81.8, cls: 'bm-mic' },
+  { key: 'lic',    label: 'LIC Mean',      val: 66.8, cls: 'bm-lic' }
+];
+
+// State
+let scores = {};
+let radarChart = null;
+
+// ═══════════════════════════════════════════════
+//  STEP NAVIGATION
+// ═══════════════════════════════════════════════
+function goToStep(n) {
+  document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('step-' + n).classList.add('active');
+
+  for (let i = 1; i <= 4; i++) {
+    const dot = document.getElementById('prog-' + i);
+    dot.classList.remove('active', 'done');
+    if (i < n) dot.classList.add('done');
+    else if (i === n) dot.classList.add('active');
+  }
+
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+// ═══════════════════════════════════════════════
+//  STEP 2 VALIDATION
+// ═══════════════════════════════════════════════
+function validateAndGoStep3() {
+  const required = ['f-hospital','f-city','f-country','f-income','f-type','f-beds','f-date'];
+  let valid = true;
+  required.forEach(id => {
+    const el = document.getElementById(id);
+    const val = el.value.trim();
+    if (!val) { el.classList.add('error'); valid = false; }
+    else el.classList.remove('error');
+  });
+  const msg = document.getElementById('form-validation');
+  if (!valid) { msg.classList.add('show'); return; }
+  msg.classList.remove('show');
+  goToStep(3);
+}
+
+// ═══════════════════════════════════════════════
+//  BUILD ASSESSMENT UI
+// ═══════════════════════════════════════════════
+function buildAssessment() {
+  const container = document.getElementById('assessment-indicators');
+  container.innerHTML = '';
+  DOMAINS.forEach(domain => {
+    const section = document.createElement('div');
+    section.className = 'domain-section';
+
+    // Domain header
+    const header = document.createElement('div');
+    header.className = 'domain-header';
+    header.style.background = domain.color;
+    header.innerHTML = `
+      <span>${domain.name}</span>
+      <span class="d-num">${domain.indicators.length} indicators</span>
+    `;
+    section.appendChild(header);
+
+    // Indicators
+    domain.indicators.forEach((indId, idx) => {
+      const ind = INDICATORS.find(i => i.id === indId);
+      const card = document.createElement('div');
+      card.className = 'indicator-card';
+      card.id = 'ind-card-' + indId;
+
+      const ratingBtns = [1,2,3,4,5].map(v => `
+        <button class="rating-btn" data-val="${v}" data-ind="${indId}" onclick="setRating(${indId}, ${v})">
+          <span class="r-num">${v}</span>
+          <span class="r-label">${RATING_LABELS[v]}</span>
+        </button>
+      `).join('');
+
+      card.innerHTML = `
+        <div class="ind-header">
+          <span class="ind-num">${indId}</span>
+          <div class="ind-title-wrap">
+            <div class="ind-title">${ind.name}</div>
+            <div class="ind-desc">${ind.desc}</div>
+          </div>
+          <span class="ind-check">✓</span>
+        </div>
+        <div class="rating-buttons" id="rating-btns-${indId}">${ratingBtns}</div>
+      `;
+      section.appendChild(card);
+    });
+    container.appendChild(section);
+  });
+}
+
+function setRating(indId, val) {
+  scores[indId] = val;
+  // Update button states
+  document.querySelectorAll(`#rating-btns-${indId} .rating-btn`).forEach(btn => {
+    btn.classList.toggle('selected', parseInt(btn.dataset.val) === val);
+  });
+  // Mark card
+  const card = document.getElementById('ind-card-' + indId);
+  card.classList.add('rated');
+  // Update progress
+  updateProgress();
+  // Clear validation
+  document.getElementById('assessment-validation').classList.remove('show');
+}
+
+function updateProgress() {
+  const answered = Object.keys(scores).length;
+  document.getElementById('prog-answered').textContent = answered;
+  document.getElementById('prog-fill').style.width = (answered / 23 * 100) + '%';
+}
+
+// ═══════════════════════════════════════════════
+//  STEP 4 VALIDATION & RESULTS
+// ═══════════════════════════════════════════════
+function validateAndGoStep4() {
+  if (Object.keys(scores).length < 23) {
+    document.getElementById('assessment-validation').classList.add('show');
+    // Scroll to first unanswered
+    for (let i = 1; i <= 23; i++) {
+      if (!scores[i]) {
+        document.getElementById('ind-card-' + i).scrollIntoView({behavior:'smooth', block:'center'});
+        break;
+      }
+    }
+    return;
+  }
+  buildResults();
+  goToStep(4);
+}
+
+function getInterpretation(score) {
+  if (score <= 46) return { label: 'Very Low Preparedness', color: '#E74C3C' };
+  if (score <= 69) return { label: 'Low Preparedness', color: '#E67E22' };
+  if (score <= 92) return { label: 'Moderate Preparedness', color: '#F39C12' };
+  return { label: 'High Preparedness', color: '#27AE60' };
+}
+
+function getDomainForIndicator(indId) {
+  return DOMAINS.find(d => d.indicators.includes(indId));
+}
+
+function buildResults() {
+  const totalScore = Object.values(scores).reduce((a, b) => a + b, 0);
+  const interp = getInterpretation(totalScore);
+
+  // ── Score Hero
+  const resultsSection = document.getElementById('results-section');
+  resultsSection.innerHTML = `
+    <div class="score-hero">
+      <div class="score-big" style="color:${interp.color}">
+        ${totalScore}<span class="score-denom"> / 115</span>
+      </div>
+      <div class="score-label-text">Total SPI Score</div>
+      <div class="score-badge" style="background:${interp.color}">${interp.label}</div>
+    </div>
+    <div style="max-width:520px;margin:0 auto;padding:0 16px 16px;">
+      <div style="font-size:0.8rem;color:var(--text-muted);line-height:1.6;text-align:center;">
+        Score range: 23 (least prepared) → 115 (most prepared).
+        Score bands: Very Low 23–46 · Low 47–69 · Moderate 70–92 · High 93–115.
+      </div>
+    </div>
+  `;
+
+  // ── Domain Results
+  const domainGrid = document.getElementById('domain-results-grid');
+  domainGrid.innerHTML = '';
+  DOMAINS.forEach(domain => {
+    const domainScore = domain.indicators.reduce((sum, id) => sum + (scores[id] || 0), 0);
+    const pct = Math.round(domainScore / domain.maxScore * 100);
+    const card = document.createElement('div');
+    card.className = 'domain-result-card';
+    card.style.background = domain.color;
+    card.innerHTML = `
+      <div class="dr-name">${domain.name}</div>
+      <div class="dr-score">${domainScore}</div>
+      <div class="dr-max">out of ${domain.maxScore} (${pct}%)</div>
+      <div class="dr-bar-bg"><div class="dr-bar-fill" style="width:${pct}%"></div></div>
+    `;
+    domainGrid.appendChild(card);
+  });
+
+  // ── Benchmarks
+  const bmWrap = document.getElementById('benchmarks-chart-wrap');
+  bmWrap.innerHTML = '';
+  const bmData = [
+    { key: 'user',   label: 'Your Hospital', val: totalScore, cls: 'bm-user' },
+    { key: 'global', label: 'Global Mean',   val: 84.5,      cls: 'bm-global' },
+    { key: 'hic',    label: 'HIC Mean',      val: 88.5,      cls: 'bm-hic' },
+    { key: 'mic',    label: 'MIC Mean',      val: 81.8,      cls: 'bm-mic' },
+    { key: 'lic',    label: 'LIC Mean',      val: 66.8,      cls: 'bm-lic' }
+  ];
+  bmData.forEach(bm => {
+    const pct = Math.round(bm.val / 115 * 100);
+    const row = document.createElement('div');
+    row.className = 'benchmark-row ' + bm.cls;
+    row.innerHTML = `
+      <div class="bm-label">${bm.label}</div>
+      <div class="bm-bar-bg">
+        <div class="bm-bar" style="width:${pct}%">${bm.val}</div>
+      </div>
+      <div class="bm-val">${bm.val}</div>
+    `;
+    bmWrap.appendChild(row);
+  });
+
+  // ── Radar Chart
+  const domainPcts = DOMAINS.map(d => {
+    const s = d.indicators.reduce((sum, id) => sum + (scores[id] || 0), 0);
+    return Math.round(s / d.maxScore * 100);
+  });
+  if (radarChart) radarChart.destroy();
+  const ctx = document.getElementById('radar-chart').getContext('2d');
+  radarChart = new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels: DOMAINS.map(d => d.name),
+      datasets: [{
+        label: 'Your Hospital (%)',
+        data: domainPcts,
+        backgroundColor: 'rgba(41,128,185,0.18)',
+        borderColor: '#2980B9',
+        pointBackgroundColor: '#2980B9',
+        pointRadius: 5,
+        borderWidth: 2.5
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        r: {
+          min: 0, max: 100,
+          ticks: { stepSize: 20, font: { size: 10 }, color: '#888' },
+          pointLabels: { font: { size: 11, weight: '600' }, color: '#1B4F72' },
+          grid: { color: '#E0E0E0' }
+        }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` ${ctx.raw}%`
+          }
+        }
+      }
+    }
+  });
+
+  // ── Priority Areas
+  const improvements = INDICATORS.filter(i => scores[i.id] <= 2);
+  const strengths = INDICATORS.filter(i => scores[i.id] === 5);
+  const priorityDiv = document.getElementById('priority-areas');
+  let html = '';
+  if (improvements.length > 0) {
+    html += `<div class="highlight-section hs-improvement">
+      <h4>⚠ Areas for Improvement (score ≤ 2)</h4>
+      <ul class="highlight-list">
+        ${improvements.map(i => `<li><strong>${i.name}</strong> — ${i.desc}</li>`).join('')}
+      </ul>
+    </div>`;
+  } else {
+    html += `<div class="highlight-section hs-strengths" style="margin-bottom:8px;">
+      <h4>✓ No critical weaknesses identified</h4>
+      <p style="font-size:0.82rem;color:var(--text-muted);">No indicators were rated 1 or 2. Well done!</p>
+    </div>`;
+  }
+  if (strengths.length > 0) {
+    html += `<div class="highlight-section hs-strengths">
+      <h4>★ Strengths (score = 5)</h4>
+      <ul class="highlight-list">
+        ${strengths.map(i => `<li><strong>${i.name}</strong></li>`).join('')}
+      </ul>
+    </div>`;
+  }
+  priorityDiv.innerHTML = html;
+
+  // ── Indicator Table
+  const tbody = document.getElementById('indicator-table-body');
+  tbody.innerHTML = '';
+  INDICATORS.forEach(ind => {
+    const s = scores[ind.id];
+    const domain = getDomainForIndicator(ind.id);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="font-weight:600;color:var(--text-muted);font-size:0.8rem;">${ind.id}</td>
+      <td style="font-size:0.82rem;">${ind.name}</td>
+      <td><span class="domain-tag" style="background:${domain.color}">${domain.name.split(' ')[0]}</span></td>
+      <td>
+        <span class="score-chip chip-${s}">${s}</span>
+        <span style="font-size:0.75rem;color:var(--text-muted);margin-left:5px;">${RATING_LABELS[s]}</span>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  PDF EXPORT
+// ═══════════════════════════════════════════════
+function exportPDF() {
+  const hospital = document.getElementById('f-hospital').value.trim();
+  const city = document.getElementById('f-city').value.trim();
+  const country = document.getElementById('f-country').value.trim();
+  const income = document.getElementById('f-income').value;
+  const type = document.getElementById('f-type').value;
+  const beds = document.getElementById('f-beds').value;
+  const role = document.getElementById('f-role').value.trim() || 'Not specified';
+  const dateVal = document.getElementById('f-date').value;
+  const dateStr = dateVal ? new Date(dateVal + 'T00:00:00').toLocaleDateString('en-GB', {day:'numeric',month:'long',year:'numeric'}) : 'Not specified';
+
+  const totalScore = Object.values(scores).reduce((a, b) => a + b, 0);
+  const interp = getInterpretation(totalScore);
+
+  // Domain scores
+  const domainRows = DOMAINS.map(d => {
+    const s = d.indicators.reduce((sum, id) => sum + (scores[id] || 0), 0);
+    const pct = Math.round(s / d.maxScore * 100);
+    return `<tr>
+      <td style="font-weight:600;color:${d.color}">${d.name}</td>
+      <td>${s} / ${d.maxScore}</td>
+      <td>${pct}%</td>
+    </tr>`;
+  }).join('');
+
+  // Indicator rows (grouped by domain)
+  let indRowsHtml = '';
+  DOMAINS.forEach(domain => {
+    indRowsHtml += `<tr><td colspan="4" style="background:${domain.color};color:#fff;font-weight:700;font-size:0.8rem;padding:6px 8px;">${domain.name}</td></tr>`;
+    domain.indicators.forEach(id => {
+      const ind = INDICATORS.find(i => i.id === id);
+      const s = scores[id];
+      const colorMap = {1:'#E74C3C',2:'#E67E22',3:'#E6B800',4:'#1E8449',5:'#27AE60'};
+      indRowsHtml += `<tr>
+        <td style="color:#888;font-size:0.75rem;">${id}</td>
+        <td>${ind.name}</td>
+        <td style="color:${colorMap[s]};font-weight:700;text-align:center;">${s}</td>
+        <td style="color:#666;">${RATING_LABELS[s]}</td>
+      </tr>`;
+    });
+  });
+
+  const bmRows = [
+    { label: 'Your Hospital', val: totalScore },
+    { label: 'Global Mean', val: 84.5 },
+    { label: 'HIC Mean', val: 88.5 },
+    { label: 'MIC Mean (UMIC/LMIC)', val: 81.8 },
+    { label: 'LIC Mean', val: 66.8 }
+  ].map(b => `<tr>
+    <td>${b.label}</td>
+    <td>${b.val}</td>
+    <td>${(b.val / 115 * 100).toFixed(1)}%</td>
+    <td>${b.label === 'Your Hospital' ? `<span style="font-weight:700;color:${interp.color}">${interp.label}</span>` : '—'}</td>
+  </tr>`).join('');
+
+  const improvements = INDICATORS.filter(i => scores[i.id] <= 2).map(i => i.name).join(', ') || 'None';
+  const strengthsList = INDICATORS.filter(i => scores[i.id] === 5).map(i => i.name).join(', ') || 'None';
+
+  const pdfHTML = `
+  <div class="pdf-page">
+    <div class="pdf-header-bar">
+      <h1>Surgical Preparedness Index (SPI) — Assessment Report</h1>
+      <p>NIHR Global Health Research Unit on Global Surgery, University of Birmingham</p>
+    </div>
+
+    <div class="pdf-section">
+      <h2>Hospital Information</h2>
+      <div class="pdf-info-grid">
+        <div class="pdf-info-item"><span class="lbl">Hospital</span>${hospital}</div>
+        <div class="pdf-info-item"><span class="lbl">City / Region</span>${city}</div>
+        <div class="pdf-info-item"><span class="lbl">Country</span>${country}</div>
+        <div class="pdf-info-item"><span class="lbl">Income Group</span>${income}</div>
+        <div class="pdf-info-item"><span class="lbl">Hospital Type</span>${type}</div>
+        <div class="pdf-info-item"><span class="lbl">Number of Beds</span>${beds}</div>
+        <div class="pdf-info-item"><span class="lbl">Assessor Role</span>${role}</div>
+        <div class="pdf-info-item"><span class="lbl">Assessment Date</span>${dateStr}</div>
+      </div>
+    </div>
+
+    <div class="pdf-section">
+      <h2>Total SPI Score</h2>
+      <div class="pdf-score-box">
+        <div><span class="score-n">${totalScore}</span><span class="score-d"> / 115</span></div>
+        <div class="score-int">${interp.label}</div>
+      </div>
+      <p style="font-size:0.8rem;color:#666;">Score range: 23 (least prepared) to 115 (most prepared).
+      Bands: Very Low 23–46 · Low 47–69 · Moderate 70–92 · High 93–115.</p>
+    </div>
+
+    <div class="pdf-section">
+      <h2>Domain Breakdown</h2>
+      <table class="pdf-domain-table">
+        <thead><tr><th>Domain</th><th>Score</th><th>%</th></tr></thead>
+        <tbody>${domainRows}</tbody>
+      </table>
+    </div>
+
+    <div class="pdf-section">
+      <h2>Benchmark Comparison</h2>
+      <table class="pdf-benchmark-table">
+        <thead><tr><th>Population</th><th>Score (/115)</th><th>%</th><th>Interpretation</th></tr></thead>
+        <tbody>${bmRows}</tbody>
+      </table>
+    </div>
+
+    <div class="pdf-section">
+      <h2>Priority Areas</h2>
+      <p style="font-size:0.82rem;margin-bottom:4px;"><strong>Areas for Improvement (score ≤ 2):</strong> ${improvements}</p>
+      <p style="font-size:0.82rem;"><strong>Strengths (score = 5):</strong> ${strengthsList}</p>
+    </div>
+
+    <div class="pdf-section">
+      <h2>Individual Indicator Scores (all 23)</h2>
+      <table class="pdf-ind-table">
+        <thead><tr><th>#</th><th>Indicator</th><th style="text-align:center;">Score</th><th>Label</th></tr></thead>
+        <tbody>${indRowsHtml}</tbody>
+      </table>
+    </div>
+
+    <div class="pdf-footer">
+      <strong>Reference:</strong> NIHR Global Health Unit on Global Surgery &amp; COVIDSurg Collaborative.
+      Surgical Preparedness Index. <em>The Lancet</em> 2022; 400:1607–17.
+      https://doi.org/10.1016/S0140-6736(22)01846-3<br/>
+      Developed by the NIHR Global Health Research Unit on Global Surgery, University of Birmingham.
+      Licensed under CC BY 4.0.
+      This report was generated on ${new Date().toLocaleDateString('en-GB', {day:'numeric',month:'long',year:'numeric'})}.
+    </div>
+  </div>`;
+
+  const pdfContainer = document.getElementById('pdf-content');
+  pdfContainer.innerHTML = pdfHTML;
+  pdfContainer.style.display = 'block';
+
+  const filename = `SPI-Report-${hospital.replace(/\s+/g,'-') || 'Hospital'}-${dateVal || 'undated'}.pdf`;
+
+  const opt = {
+    margin: [10, 10, 10, 10],
+    filename: filename,
+    image: { type: 'jpeg', quality: 0.97 },
+    html2canvas: { scale: 2, useCORS: true, logging: false },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+  };
+
+  html2pdf().set(opt).from(pdfContainer).save().then(() => {
+    pdfContainer.style.display = 'none';
+    pdfContainer.innerHTML = '';
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  RESET
+// ═══════════════════════════════════════════════
+function resetAssessment() {
+  if (!confirm('Start a new assessment? All current responses will be cleared.')) return;
+  scores = {};
+  buildAssessment();
+  updateProgress();
+  goToStep(1);
+}
+
+// ═══════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', function () {
+  buildAssessment();
+  // Default date to today
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('f-date').value = today;
+});
+</script>
+</body>
+</html>
