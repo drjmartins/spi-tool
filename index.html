@@ -1110,7 +1110,7 @@
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M1 4v6h6M23 20v-6h-6M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
             New Assessment
           </button>
-          <button class="btn btn-success" onclick="exportPDF()" title="Opens print dialog — select 'Save as PDF'">
+          <button class="btn btn-success" onclick="exportPDF()" title="Opens the print dialog: choose 'Save as PDF'">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
             Export PDF Report
           </button>
@@ -1848,172 +1848,231 @@ function buildResults() {
 //  PDF EXPORT
 // ═══════════════════════════════════════════════
 function exportPDF() {
-  const hospital = document.getElementById('f-hospital').value.trim();
-  const city = document.getElementById('f-city').value.trim();
-  const country = COUNTRY_NAMES[document.getElementById('f-country').value] || '';
-  const income = document.getElementById('f-income').value;
-  const type = document.getElementById('f-type').value;
-  const beds = document.getElementById('f-beds').value;
-  const role = document.getElementById('f-role').value.trim() || 'Not specified';
+  const sel = id => { const e = document.getElementById(id); return e.value ? e.options[e.selectedIndex].text : 'Not specified'; };
+  const esc = t => String(t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const hospital = esc(document.getElementById('f-hospital').value.trim());
+  const city = esc(document.getElementById('f-city').value.trim());
+  const country = COUNTRY_NAMES[document.getElementById('f-country').value] || 'Not specified';
+  const income = sel('f-income');
+  const type = sel('f-type');
+  const beds = sel('f-beds');
+  const role = esc(document.getElementById('f-role').value.trim()) || 'Not specified';
   const dateVal = document.getElementById('f-date').value;
-  const dateStr = dateVal ? new Date(dateVal + 'T00:00:00').toLocaleDateString('en-GB', {day:'numeric',month:'long',year:'numeric'}) : 'Not specified';
+  const fmt = d => d.toLocaleDateString('en-GB', {day:'numeric', month:'long', year:'numeric'});
+  const dateStr = dateVal ? fmt(new Date(dateVal + 'T00:00:00')) : 'Not specified';
 
   const totalScore = Object.values(scores).reduce((a, b) => a + b, 0);
   const interp = getInterpretation(totalScore);
+  const base = new URL('.', location.href).href;
+  const toolUrl = location.origin + location.pathname.replace(/index\.html$/, '');
+  const RATING_COLOURS = {1:'#b3261e', 2:'#b45309', 3:'#8a6a00', 4:'#4d7c2a', 5:'#2f7d4f'};
+  const bar = (pct, colour) => `<div class="mini"><div style="width:${pct}%;background:${colour}"></div></div>`;
 
   // Domain scores
   const domainRows = DOMAINS.map(d => {
     const s = d.indicators.reduce((sum, id) => sum + (scores[id] || 0), 0);
     const pct = Math.round(s / d.maxScore * 100);
     return `<tr>
-      <td style="font-weight:600;color:${d.color}">${d.name}</td>
-      <td>${s} / ${d.maxScore}</td>
-      <td>${pct}%</td>
+      <td><span class="sw" style="background:${d.color}"></span>${d.name}</td>
+      <td class="num">${s} / ${d.maxScore}</td>
+      <td class="num">${pct}%</td>
+      <td class="barcell">${bar(pct, d.color)}</td>
     </tr>`;
   }).join('');
+
+  // Benchmarks
+  const bmRows = [
+    { label: 'Your hospital', val: totalScore, colour: '#0b1d3a', you: true },
+    { label: 'Global mean', val: 84.5, colour: '#6b6b6b' },
+    { label: 'High-income mean', val: 88.5, colour: '#9a9a95' },
+    { label: 'Middle-income mean', val: 81.8, colour: '#9a9a95' },
+    { label: 'Low-income mean', val: 66.8, colour: '#9a9a95' }
+  ].map(b => `<tr${b.you ? ' class="you"' : ''}>
+    <td>${b.label}</td>
+    <td class="num">${b.val}</td>
+    <td class="barcell">${bar((b.val / 115 * 100).toFixed(1), b.colour)}</td>
+  </tr>`).join('');
 
   // Indicator rows (grouped by domain)
   let indRowsHtml = '';
   DOMAINS.forEach(domain => {
-    indRowsHtml += `<tr><td colspan="4" style="background:${domain.color};color:#fff;font-weight:700;font-size:0.8rem;padding:6px 8px;">${domain.name}</td></tr>`;
+    indRowsHtml += `<tr class="dom"><td colspan="3" style="background:${domain.color}">${domain.name}</td></tr>`;
     domain.indicators.forEach(id => {
       const ind = INDICATORS.find(i => i.id === id);
       const s = scores[id];
-      const colorMap = {1:'#b3261e',2:'#b45309',3:'#8a6a00',4:'#4d7c2a',5:'#2f7d4f'};
       indRowsHtml += `<tr>
-        <td style="color:#888;font-size:0.75rem;">${id}</td>
+        <td class="idx">${id}</td>
         <td>${ind.name}</td>
-        <td style="color:${colorMap[s]};font-weight:700;text-align:center;">${s}</td>
-        <td style="color:#666;">${RATING_LABELS[s]}</td>
+        <td><span class="chip" style="background:${RATING_COLOURS[s]}">${s}</span>${RATING_LABELS[s]}</td>
       </tr>`;
     });
   });
 
-  const bmRows = [
-    { label: 'Your Hospital', val: totalScore },
-    { label: 'Global Mean', val: 84.5 },
-    { label: 'HIC Mean', val: 88.5 },
-    { label: 'MIC Mean (UMIC/LMIC)', val: 81.8 },
-    { label: 'LIC Mean', val: 66.8 }
-  ].map(b => `<tr>
-    <td>${b.label}</td>
-    <td>${b.val}</td>
-    <td>${(b.val / 115 * 100).toFixed(1)}%</td>
-    <td>${b.label === 'Your Hospital' ? `<span style="font-weight:700;color:${interp.color}">${interp.label}</span>` : '—'}</td>
-  </tr>`).join('');
+  const listItems = arr => arr.length ? '<ul>' + arr.map(i => `<li>${i.name}</li>`).join('') + '</ul>' : '<p class="none">None</p>';
+  const improvements = listItems(INDICATORS.filter(i => scores[i.id] <= 2));
+  const strengths = listItems(INDICATORS.filter(i => scores[i.id] === 5));
 
-  const improvements = INDICATORS.filter(i => scores[i.id] <= 2).map(i => i.name).join(', ') || 'None';
-  const strengthsList = INDICATORS.filter(i => scores[i.id] === 5).map(i => i.name).join(', ') || 'None';
-
+  const titleBits = [hospital, city].filter(Boolean).join(', ');
   const pdfHTML = `
-  <div class="pdf-page">
-    <div class="pdf-header-bar">
-      <h1>Surgical Preparedness Index (SPI) — Assessment Report</h1>
-      <p>Surgical Data and Policy Lab, University of Birmingham</p>
-    </div>
+  <header class="lab">
+    <img src="${base}assets/sdpl-seal.png" alt="" width="34" height="34"><span>Surgical Data and Policy Lab</span>
+    <span class="lab-right">University of Birmingham</span>
+  </header>
+  <div class="title">
+    <h1>Surgical <em>Preparedness</em> Index</h1>
+    <div class="sub">Assessment report${titleBits ? ' &middot; ' + titleBits : ''} &middot; ${dateStr}</div>
+  </div>
 
-    <div class="pdf-section">
-      <h2>Hospital Information</h2>
-      <div class="pdf-info-grid">
-        <div class="pdf-info-item"><span class="lbl">Hospital</span>${hospital || 'Not specified'}</div>
-        <div class="pdf-info-item"><span class="lbl">City / Region</span>${city || 'Not specified'}</div>
-        <div class="pdf-info-item"><span class="lbl">Country</span>${country}</div>
-        <div class="pdf-info-item"><span class="lbl">Income Group</span>${income}</div>
-        <div class="pdf-info-item"><span class="lbl">Hospital Type</span>${type}</div>
-        <div class="pdf-info-item"><span class="lbl">Number of Beds</span>${beds}</div>
-        <div class="pdf-info-item"><span class="lbl">Assessor Role</span>${role}</div>
-        <div class="pdf-info-item"><span class="lbl">Assessment Date</span>${dateStr}</div>
-      </div>
-    </div>
+  <section>
+    <h2>Hospital information</h2>
+    <table class="info">
+      <tr><th>Hospital</th><td>${hospital || 'Not specified'}</td><th>City / region</th><td>${city || 'Not specified'}</td></tr>
+      <tr><th>Country</th><td>${country}</td><th>Income group</th><td>${income}</td></tr>
+      <tr><th>Hospital type</th><td>${type}</td><th>Number of beds</th><td>${beds}</td></tr>
+      <tr><th>Assessor role</th><td>${role}</td><th>Assessment date</th><td>${dateStr}</td></tr>
+    </table>
+  </section>
 
-    <div class="pdf-section">
-      <h2>Total SPI Score</h2>
-      <div class="pdf-score-box">
-        <div><span class="score-n">${totalScore}</span><span class="score-d"> / 115</span></div>
-        <div class="score-int">${interp.label}</div>
-      </div>
-      <p style="font-size:0.8rem;color:#666;">Score range: 23 (least prepared) to 115 (most prepared).
-      Bands: Very Low 23–46 · Low 47–69 · Moderate 70–92 · High 93–115.</p>
+  <section class="keep">
+    <h2>Total SPI score</h2>
+    <div class="score">
+      <div class="score-n" style="color:${interp.color}">${totalScore}<span> / 115</span></div>
+      <div class="badge" style="background:${interp.color}">${interp.label}</div>
     </div>
+    ${scoreBandHtml(totalScore)}
+  </section>
 
-    <div class="pdf-section">
-      <h2>Domain Breakdown</h2>
-      <table class="pdf-domain-table">
-        <thead><tr><th>Domain</th><th>Score</th><th>%</th></tr></thead>
-        <tbody>${domainRows}</tbody>
-      </table>
-    </div>
+  <section class="keep">
+    <h2>Domain breakdown</h2>
+    <table class="grid">
+      <thead><tr><th>Domain</th><th class="num">Score</th><th class="num">%</th><th></th></tr></thead>
+      <tbody>${domainRows}</tbody>
+    </table>
+  </section>
 
-    <div class="pdf-section">
-      <h2>Benchmark Comparison</h2>
-      <table class="pdf-benchmark-table">
-        <thead><tr><th>Population</th><th>Score (/115)</th><th>%</th><th>Interpretation</th></tr></thead>
-        <tbody>${bmRows}</tbody>
-      </table>
-    </div>
+  <section class="keep">
+    <h2>Benchmark comparison</h2>
+    <table class="grid">
+      <thead><tr><th>Population</th><th class="num">Score (out of 115)</th><th></th></tr></thead>
+      <tbody>${bmRows}</tbody>
+    </table>
+  </section>
 
-    <div class="pdf-section">
-      <h2>Priority Areas</h2>
-      <p style="font-size:0.82rem;margin-bottom:4px;"><strong>Areas for Improvement (score ≤ 2):</strong> ${improvements}</p>
-      <p style="font-size:0.82rem;"><strong>Strengths (score = 5):</strong> ${strengthsList}</p>
+  <section class="keep">
+    <h2>Priority areas</h2>
+    <div class="areas">
+      <div class="area improve"><h3>Areas for improvement (score 2 or below)</h3>${improvements}</div>
+      <div class="area strong"><h3>Strengths (score 5)</h3>${strengths}</div>
     </div>
+  </section>
 
-    <div class="pdf-section">
-      <h2>Individual Indicator Scores (all 23)</h2>
-      <table class="pdf-ind-table">
-        <thead><tr><th>#</th><th>Indicator</th><th style="text-align:center;">Score</th><th>Label</th></tr></thead>
-        <tbody>${indRowsHtml}</tbody>
-      </table>
-    </div>
+  <section>
+    <h2>All 23 indicators</h2>
+    <table class="grid ind">
+      <thead><tr><th>#</th><th>Indicator</th><th>Score</th></tr></thead>
+      <tbody>${indRowsHtml}</tbody>
+    </table>
+  </section>
 
-    <div class="pdf-footer">
-      <strong>Reference:</strong> NIHR Global Health Unit on Global Surgery &amp; COVIDSurg Collaborative.
-      Surgical Preparedness Index. <em>The Lancet</em> 2022; 400:1607–17.
-      https://doi.org/10.1016/S0140-6736(22)01846-3<br/>
-      Developed by the NIHR Global Health Research Unit on Global Surgery (now the Surgical Data and Policy Lab), University of Birmingham.
-      Licensed under CC BY 4.0.
-      This report was generated on ${new Date().toLocaleDateString('en-GB', {day:'numeric',month:'long',year:'numeric'})}.
-    </div>
-  </div>`;
+  <footer>
+    <p><b>Reference:</b> NIHR Global Health Unit on Global Surgery &amp; COVIDSurg Collaborative.
+    Surgical Preparedness Index. <i>The Lancet</i> 2022; 400:1607–17. doi.org/10.1016/S0140-6736(22)01846-3</p>
+    <p>The SPI was developed by the NIHR Global Health Research Unit on Global Surgery (now the Surgical Data and Policy Lab), University of Birmingham.
+    Licensed under CC BY 4.0. For research and quality improvement purposes only.
+    Generated on ${fmt(new Date())} with the SPI tool at ${toolUrl}</p>
+  </footer>`;
 
   const css = `
+    @font-face{font-family:"IBM Plex Sans";font-weight:400;src:url("${base}assets/fonts/ibm-plex-sans-latin-400-normal.woff2") format("woff2")}
+    @font-face{font-family:"IBM Plex Sans";font-weight:600;src:url("${base}assets/fonts/ibm-plex-sans-latin-600-normal.woff2") format("woff2")}
+    @font-face{font-family:"IBM Plex Sans";font-weight:700;src:url("${base}assets/fonts/ibm-plex-sans-latin-700-normal.woff2") format("woff2")}
+    @font-face{font-family:"IBM Plex Sans";font-weight:700;font-style:italic;src:url("${base}assets/fonts/ibm-plex-sans-latin-700-italic.woff2") format("woff2")}
+    :root { --ink:#141414; --ink-soft:#4a4a4a; --line:#d6d6d1; --paper:#f5f5f2;
+      --score-very-low:#b3261e; --score-low:#b45309; --score-moderate:#8a6a00; --score-high:#2f7d4f; }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: Arial, sans-serif; color: #1A1A2E; padding: 0; }
-    .pdf-page { padding: 0; max-width: 100%; }
-    .pdf-header-bar { background: #0b1d3a; color: #fff; padding: 16px 20px; margin-bottom: 18px; }
-    .pdf-header-bar h1 { font-size: 1.3rem; margin: 0 0 3px; }
-    .pdf-header-bar p { font-size: 0.8rem; opacity: 0.85; margin: 0; }
-    .pdf-section { margin-bottom: 18px; padding: 0 20px; }
-    .pdf-section h2 { font-size: 1rem; font-weight: 700; color: #0b1d3a; border-bottom: 2px solid #D5D8DC; padding-bottom: 5px; margin-bottom: 10px; }
-    .pdf-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .pdf-info-item { background: #F4F6F9; border-radius: 5px; padding: 8px 12px; font-size: 0.82rem; }
-    .pdf-info-item .lbl { font-weight: 700; color: #5D6D7E; font-size: 0.72rem; display: block; }
-    .pdf-score-box { text-align: center; background: #0b1d3a; color: #fff; border-radius: 10px; padding: 18px; margin-bottom: 14px; }
-    .pdf-score-box .score-n { font-size: 3.5rem; font-weight: 900; line-height: 1; }
-    .pdf-score-box .score-d { font-size: 1.4rem; opacity: 0.7; }
-    .pdf-score-box .score-int { font-size: 0.95rem; margin-top: 6px; }
-    .pdf-domain-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; margin-top: 8px; }
-    .pdf-domain-table th { background: #F4F6F9; padding: 7px 10px; text-align: left; border: 1px solid #D5D8DC; font-weight: 700; }
-    .pdf-domain-table td { padding: 7px 10px; border: 1px solid #D5D8DC; }
-    .pdf-ind-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
-    .pdf-ind-table th { background: #F4F6F9; padding: 6px 8px; border: 1px solid #D5D8DC; font-weight: 700; text-align: left; }
-    .pdf-ind-table td { padding: 6px 8px; border: 1px solid #D5D8DC; vertical-align: top; }
-    .pdf-ind-table tr:nth-child(even) td { background: #FAFBFC; }
-    .pdf-benchmark-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
-    .pdf-benchmark-table th { background: #F4F6F9; padding: 7px 10px; text-align: left; border: 1px solid #D5D8DC; }
-    .pdf-benchmark-table td { padding: 7px 10px; border: 1px solid #D5D8DC; }
-    .pdf-footer { font-size: 0.7rem; color: #888; border-top: 1px solid #D5D8DC; padding: 10px 20px 0; margin-top: 18px; }
-    @page { margin: 15mm; }
+    html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    body { font-family: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif; color: var(--ink); font-size: 10.5pt; line-height: 1.45; max-width: 760px; margin: 0 auto; padding: 8px 4px; }
+    header.lab { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 11pt; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+    header.lab img { display: block; }
+    header.lab .lab-right { margin-left: auto; font-weight: 400; font-size: 9pt; color: var(--ink-soft); }
+    .title { border-bottom: 2px solid var(--ink); padding: 14px 0 10px; margin-bottom: 16px; }
+    h1 { font-size: 21pt; font-weight: 700; letter-spacing: -.02em; line-height: 1.15; }
+    h1 em { font-style: italic; color: #c2185b; }
+    .sub { font-size: 8.5pt; font-weight: 600; text-transform: uppercase; letter-spacing: .07em; color: var(--ink-soft); margin-top: 3px; }
+    section { margin-bottom: 13px; }
+    section.keep { break-inside: avoid; }
+    h2 { font-size: 11.5pt; font-weight: 700; color: #0b1d3a; border-bottom: 1px solid var(--line); padding-bottom: 4px; margin-bottom: 8px; break-after: avoid; }
+    table { width: 100%; border-collapse: collapse; }
+    tr { break-inside: avoid; }
+    table.info th { text-align: left; font-size: 8pt; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-soft); background: var(--paper); padding: 6px 8px; width: 17%; border: 1px solid var(--line); }
+    table.info td { padding: 6px 8px; border: 1px solid var(--line); width: 33%; }
+    table.grid th { text-align: left; font-size: 8pt; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-soft); padding: 5px 8px; border-bottom: 1.5px solid var(--ink); }
+    table.grid td { padding: 5px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+    table.grid tr.you td { font-weight: 700; }
+    .num { text-align: right; white-space: nowrap; width: 1%; }
+    .barcell { width: 45%; }
+    .mini { height: 9px; background: #ecece8; }
+    .mini div { height: 100%; }
+    .sw { display: inline-block; width: 10px; height: 10px; margin-right: 8px; vertical-align: 0; }
+    table.ind td { padding: 2px 8px; font-size: 9.5pt; }
+    table.ind td.idx { color: var(--ink-soft); width: 28px; }
+    table.ind tr.dom td { color: #fff; font-weight: 700; font-size: 9pt; padding: 4px 8px; border-bottom: 0; }
+    .chip { display: inline-block; width: 16px; height: 16px; line-height: 16px; text-align: center; color: #fff; font-weight: 700; font-size: 9pt; margin-right: 8px; }
+    .score { display: flex; align-items: center; justify-content: center; gap: 18px; margin: 4px 0 2px; }
+    .score-n { font-size: 40pt; font-weight: 700; letter-spacing: -1.5px; line-height: 1; }
+    .score-n span { font-size: 16pt; color: var(--ink-soft); letter-spacing: 0; }
+    .badge { color: #fff; font-weight: 700; font-size: 9pt; text-transform: uppercase; letter-spacing: .06em; padding: 6px 14px; }
+    .band-wrap { max-width: 600px; margin: 6px auto 0; }
+    .band-track { position: relative; padding-top: 28px; }
+    .band-bar { display: flex; height: 12px; }
+    .band-seg { height: 100%; }
+    .band-marker { position: absolute; top: 0; transform: translateX(-50%); text-align: center; white-space: nowrap; }
+    .band-marker .bm-txt { font-size: 8.5pt; font-weight: 700; display: block; margin-bottom: 3px; line-height: 1; }
+    .band-marker .bm-pin { width: 2px; height: 34px; background: var(--ink); margin: 0 auto; }
+    .band-ref { position: absolute; top: 28px; height: 12px; border-left: 2px dotted #fff; transform: translateX(-1px); }
+    .band-labels { display: flex; margin-top: 6px; }
+    .band-labels div { font-size: 8pt; color: var(--ink-soft); line-height: 1.3; padding: 0 3px; }
+    .band-labels div b { display: block; color: var(--ink); }
+    .band-labels div.current b { text-decoration: underline; text-underline-offset: 2px; }
+    .band-ends { display: flex; justify-content: space-between; font-size: 7.5pt; color: var(--ink-soft); margin-top: 4px; }
+    .band-key { text-align: center; font-size: 7.5pt; color: var(--ink-soft); margin-top: 2px; }
+    .band-key-swatch { display: inline-block; height: 9px; border-left: 2px dotted var(--ink); margin-right: 5px; vertical-align: -1px; }
+    .areas { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .area { padding: 8px 10px; border: 1px solid var(--line); }
+    .area h3 { font-size: 9.5pt; margin-bottom: 4px; }
+    .area ul { padding-left: 16px; font-size: 9.5pt; }
+    .area .none { font-size: 9.5pt; color: var(--ink-soft); }
+    .improve { background: #fff7e8; border-color: #f0dcae; border-left: 3px solid #c8881d; }
+    .improve h3 { color: #6b561f; }
+    .strong { background: #eef5f0; border-color: #c3dccd; border-left: 3px solid #2f7d4f; }
+    .strong h3 { color: #2f7d4f; }
+    footer { border-top: 1px solid var(--line); padding-top: 6px; margin-top: 10px; font-size: 7.5pt; color: var(--ink-soft); }
+    footer p { margin-bottom: 3px; }
+    @page { size: A4; margin: 12mm 14mm; }
   `;
 
-  const win = window.open('', '_blank', 'width=900,height=700');
-  win.document.write(`<!DOCTYPE html><html><head>
+  // Open the report as its own page (a Blob URL) so the Plex fonts and the lab seal load
+  // normally, then print from inside it once they are ready (or after 3 s at most).
+  const printScript = `<scr` + `ipt>
+    (function () {
+      var img = document.querySelector('header.lab img');
+      var imgReady = new Promise(function (r) { if (img.complete) r(); else { img.onload = r; img.onerror = r; } });
+      var ready = Promise.all([document.fonts.ready, imgReady]);
+      var timeout = new Promise(function (r) { setTimeout(r, 3000); });
+      window.addEventListener('load', function () {
+        Promise.race([ready, timeout]).then(function () { setTimeout(function () { window.focus(); window.print(); }, 150); });
+      });
+    })();
+  </scr` + `ipt>`;
+  const html = `<!DOCTYPE html><html lang="en-GB"><head>
     <meta charset="UTF-8">
-    <title>SPI Report — ${hospital || 'Hospital'}</title>
+    <title>SPI report${titleBits ? ': ' + titleBits : ''}</title>
     <style>${css}</style>
-  </head><body>${pdfHTML}</body></html>`);
-  win.document.close();
-  setTimeout(() => { win.focus(); win.print(); }, 400);
+  </head><body>${pdfHTML}${printScript}</body></html>`;
+  const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+  const win = window.open(url, '_blank');
+  if (!win) alert('Your browser blocked the report window. Please allow pop-ups for this site and try again.');
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
 // ═══════════════════════════════════════════════
