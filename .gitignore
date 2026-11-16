@@ -1,0 +1,10 @@
+# Local Netlify folder
+.netlify
+
+# macOS and Claude settings
+.DS_Store
+.claude/
+
+# Working notes and reference papers (not for the public repo)
+Instructions.rtf
+*.pdf

@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Surgical Preparedness Index (SPI)</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -479,6 +478,31 @@
     }
     .validation-msg.show { display: block; }
 
+    .consent-block {
+      background: #EBF5FB;
+      border: 1px solid #AED6F1;
+      border-radius: 10px;
+      padding: 16px 18px;
+      margin: 24px 0 8px;
+    }
+    .consent-block label {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      cursor: pointer;
+      font-size: 0.88rem;
+      color: var(--text-main);
+      line-height: 1.5;
+    }
+    .consent-block input[type=checkbox] {
+      margin-top: 2px;
+      width: 17px; height: 17px;
+      flex-shrink: 0;
+      accent-color: var(--primary);
+      cursor: pointer;
+    }
+    .consent-block.error { border-color: var(--score-very-low); background: #FDEDEC; }
+
     /* ── Results ── */
     .score-hero {
       text-align: center;
@@ -604,16 +628,20 @@
     .hs-strengths h4 { color: #1E8449; }
     .highlight-list { list-style: none; padding: 0; }
     .highlight-list li {
-      padding: 5px 0;
-      font-size: 0.82rem;
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+      font-size: 0.85rem;
       color: var(--text);
       display: flex;
       align-items: flex-start;
       gap: 8px;
     }
-    .highlight-list li::before { content: '•'; flex-shrink: 0; margin-top: 0px; font-weight: 900; }
+    .highlight-list li:last-child { border-bottom: none; }
+    .highlight-list li::before { content: '•'; flex-shrink: 0; font-weight: 900; margin-top: 2px; }
     .hs-improvement .highlight-list li::before { color: #E67E22; }
     .hs-strengths .highlight-list li::before { color: var(--score-high); }
+    .highlight-list .ind-name { display: block; font-weight: 600; }
+    .highlight-list .ind-desc { display: block; font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; line-height: 1.4; }
 
     /* ── Footer ── */
     footer {
@@ -644,6 +672,18 @@
 
     /* ── PDF-specific hidden div ── */
     #pdf-content { display: none; }
+
+    @media print {
+      body > *:not(#pdf-content) { display: none !important; }
+      #pdf-content {
+        display: block !important;
+        position: static !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+      @page { margin: 15mm; }
+    }
     .pdf-page {
       font-family: Arial, sans-serif;
       color: #1A1A2E;
@@ -682,6 +722,23 @@
   </style>
 </head>
 <body>
+
+<!-- Hidden Netlify form for bot detection -->
+<form name="spi-assessment" data-netlify="true" hidden>
+  <input name="hospital-name" /><input name="city" /><input name="country" />
+  <input name="income-group" /><input name="hospital-type" /><input name="hospital-beds" />
+  <input name="assessor-role" /><input name="assessment-date" />
+  <input name="total-score" />
+  <input name="facilities-score" /><input name="staffing-score" />
+  <input name="prioritisation-score" /><input name="systems-score" />
+  <input name="ind-1" /><input name="ind-2" /><input name="ind-3" /><input name="ind-4" />
+  <input name="ind-5" /><input name="ind-6" /><input name="ind-7" /><input name="ind-8" />
+  <input name="ind-9" /><input name="ind-10" /><input name="ind-11" /><input name="ind-12" />
+  <input name="ind-13" /><input name="ind-14" /><input name="ind-15" /><input name="ind-16" />
+  <input name="ind-17" /><input name="ind-18" /><input name="ind-19" /><input name="ind-20" />
+  <input name="ind-21" /><input name="ind-22" /><input name="ind-23" />
+  <input name="consent" />
+</form>
 
 <!-- Site Header -->
 <header class="site-header">
@@ -921,12 +978,20 @@
         <!-- Dynamically generated -->
       </div>
 
+      <div class="consent-block" id="consent-block">
+        <label>
+          <input type="checkbox" id="consent-checkbox">
+          <span>I consent to my hospital's anonymised assessment data (including scores and hospital details) being securely stored and used for research purposes by the NIHR Global Health Research Unit on Global Surgery, University of Birmingham. Data will be handled in accordance with UK GDPR and the University of Birmingham's data protection policy.</span>
+        </label>
+      </div>
+      <div class="validation-msg" id="consent-validation">Please tick the consent box before viewing your results.</div>
+
       <div class="btn-row" style="justify-content:space-between;margin-top:8px;">
         <button class="btn btn-outline" onclick="goToStep(2)">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
           Back
         </button>
-        <button class="btn btn-primary btn-lg" onclick="validateAndGoStep4()">
+        <button class="btn btn-primary btn-lg" id="view-results-btn" onclick="this.disabled=true; validateAndGoStep4().finally(() => this.disabled=false)">
           View Results
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </button>
@@ -1006,7 +1071,7 @@
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M1 4v6h6M23 20v-6h-6M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
             New Assessment
           </button>
-          <button class="btn btn-success" onclick="exportPDF()">
+          <button class="btn btn-success" onclick="exportPDF()" title="Opens print dialog — select 'Save as PDF'">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
             Export PDF Report
           </button>
@@ -1220,10 +1285,10 @@ function updateProgress() {
 // ═══════════════════════════════════════════════
 //  STEP 4 VALIDATION & RESULTS
 // ═══════════════════════════════════════════════
-function validateAndGoStep4() {
+async function validateAndGoStep4() {
+  // Check all 23 indicators answered
   if (Object.keys(scores).length < 23) {
     document.getElementById('assessment-validation').classList.add('show');
-    // Scroll to first unanswered
     for (let i = 1; i <= 23; i++) {
       if (!scores[i]) {
         document.getElementById('ind-card-' + i).scrollIntoView({behavior:'smooth', block:'center'});
@@ -1232,6 +1297,56 @@ function validateAndGoStep4() {
     }
     return;
   }
+
+  // Check consent
+  const consentChecked = document.getElementById('consent-checkbox').checked;
+  const consentBlock = document.getElementById('consent-block');
+  const consentValidation = document.getElementById('consent-validation');
+  if (!consentChecked) {
+    consentBlock.classList.add('error');
+    consentValidation.classList.add('show');
+    consentBlock.scrollIntoView({behavior:'smooth', block:'center'});
+    return;
+  }
+  consentBlock.classList.remove('error');
+  consentValidation.classList.remove('show');
+
+  // Calculate domain scores for submission
+  const domainScores = {};
+  DOMAINS.forEach(d => {
+    domainScores[d.id] = d.indicators.reduce((sum, id) => sum + (scores[id] || 0), 0);
+  });
+  const totalScore = Object.values(scores).reduce((a, b) => a + b, 0);
+
+  // Submit to Netlify Forms (non-blocking, 5s timeout)
+  const formData = new FormData();
+  formData.append('form-name', 'spi-assessment');
+  formData.append('hospital-name', document.getElementById('f-hospital').value || '');
+  formData.append('city', document.getElementById('f-city').value || '');
+  formData.append('country', document.getElementById('f-country').value || '');
+  formData.append('income-group', document.getElementById('f-income').value || '');
+  formData.append('hospital-type', document.getElementById('f-type').value || '');
+  formData.append('hospital-beds', document.getElementById('f-beds').value || '');
+  formData.append('assessor-role', document.getElementById('f-role').value || '');
+  formData.append('assessment-date', document.getElementById('f-date').value || '');
+  formData.append('total-score', totalScore);
+  formData.append('facilities-score', domainScores['facilities'] || 0);
+  formData.append('staffing-score', domainScores['staffing'] || 0);
+  formData.append('prioritisation-score', domainScores['prioritisation'] || 0);
+  formData.append('systems-score', domainScores['systems'] || 0);
+  for (let i = 1; i <= 23; i++) formData.append('ind-' + i, scores[i] || 0);
+  formData.append('consent', 'yes');
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  try {
+    await fetch('/', { method: 'POST', body: formData, signal: controller.signal });
+  } catch (e) {
+    console.warn('Form submission failed:', e);
+  } finally {
+    clearTimeout(timeout);
+  }
+
   buildResults();
   goToStep(4);
 }
@@ -1363,7 +1478,7 @@ function buildResults() {
     html += `<div class="highlight-section hs-improvement">
       <h4>⚠ Areas for Improvement (score ≤ 2)</h4>
       <ul class="highlight-list">
-        ${improvements.map(i => `<li><strong>${i.name}</strong> — ${i.desc}</li>`).join('')}
+        ${improvements.map(i => `<li><div><span class="ind-name">${i.name}</span><span class="ind-desc">${i.desc}</span></div></li>`).join('')}
       </ul>
     </div>`;
   } else {
@@ -1534,25 +1649,44 @@ function exportPDF() {
     </div>
   </div>`;
 
-  const pdfContainer = document.getElementById('pdf-content');
-  pdfContainer.innerHTML = pdfHTML;
-  pdfContainer.style.display = 'block';
+  const css = `
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; color: #1A1A2E; padding: 0; }
+    .pdf-page { padding: 0; max-width: 100%; }
+    .pdf-header-bar { background: #1B4F72; color: #fff; padding: 16px 20px; margin-bottom: 18px; }
+    .pdf-header-bar h1 { font-size: 1.3rem; margin: 0 0 3px; }
+    .pdf-header-bar p { font-size: 0.8rem; opacity: 0.85; margin: 0; }
+    .pdf-section { margin-bottom: 18px; padding: 0 20px; }
+    .pdf-section h2 { font-size: 1rem; font-weight: 700; color: #1B4F72; border-bottom: 2px solid #D5D8DC; padding-bottom: 5px; margin-bottom: 10px; }
+    .pdf-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .pdf-info-item { background: #F4F6F9; border-radius: 5px; padding: 8px 12px; font-size: 0.82rem; }
+    .pdf-info-item .lbl { font-weight: 700; color: #5D6D7E; font-size: 0.72rem; display: block; }
+    .pdf-score-box { text-align: center; background: #1B4F72; color: #fff; border-radius: 10px; padding: 18px; margin-bottom: 14px; }
+    .pdf-score-box .score-n { font-size: 3.5rem; font-weight: 900; line-height: 1; }
+    .pdf-score-box .score-d { font-size: 1.4rem; opacity: 0.7; }
+    .pdf-score-box .score-int { font-size: 0.95rem; margin-top: 6px; }
+    .pdf-domain-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; margin-top: 8px; }
+    .pdf-domain-table th { background: #F4F6F9; padding: 7px 10px; text-align: left; border: 1px solid #D5D8DC; font-weight: 700; }
+    .pdf-domain-table td { padding: 7px 10px; border: 1px solid #D5D8DC; }
+    .pdf-ind-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+    .pdf-ind-table th { background: #F4F6F9; padding: 6px 8px; border: 1px solid #D5D8DC; font-weight: 700; text-align: left; }
+    .pdf-ind-table td { padding: 6px 8px; border: 1px solid #D5D8DC; vertical-align: top; }
+    .pdf-ind-table tr:nth-child(even) td { background: #FAFBFC; }
+    .pdf-benchmark-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    .pdf-benchmark-table th { background: #F4F6F9; padding: 7px 10px; text-align: left; border: 1px solid #D5D8DC; }
+    .pdf-benchmark-table td { padding: 7px 10px; border: 1px solid #D5D8DC; }
+    .pdf-footer { font-size: 0.7rem; color: #888; border-top: 1px solid #D5D8DC; padding: 10px 20px 0; margin-top: 18px; }
+    @page { margin: 15mm; }
+  `;
 
-  const filename = `SPI-Report-${hospital.replace(/\s+/g,'-') || 'Hospital'}-${dateVal || 'undated'}.pdf`;
-
-  const opt = {
-    margin: [10, 10, 10, 10],
-    filename: filename,
-    image: { type: 'jpeg', quality: 0.97 },
-    html2canvas: { scale: 2, useCORS: true, logging: false },
-    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-  };
-
-  html2pdf().set(opt).from(pdfContainer).save().then(() => {
-    pdfContainer.style.display = 'none';
-    pdfContainer.innerHTML = '';
-  });
+  const win = window.open('', '_blank', 'width=900,height=700');
+  win.document.write(`<!DOCTYPE html><html><head>
+    <meta charset="UTF-8">
+    <title>SPI Report — ${hospital || 'Hospital'}</title>
+    <style>${css}</style>
+  </head><body>${pdfHTML}</body></html>`);
+  win.document.close();
+  setTimeout(() => { win.focus(); win.print(); }, 400);
 }
 
 // ═══════════════════════════════════════════════
