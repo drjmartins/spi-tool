@@ -298,7 +298,6 @@
     .btn-danger { background: var(--score-very-low); color: #fff; }
     .btn-danger:hover { background: #C0392B; }
     .btn-lg { padding: 14px 36px; font-size: 1.05rem; }
-    .btn-sm { padding: 8px 18px; font-size: 0.82rem; }
 
     .btn-row {
       display: flex;
@@ -501,7 +500,6 @@
       accent-color: var(--primary);
       cursor: pointer;
     }
-    .consent-block.error { border-color: var(--score-very-low); background: #FDEDEC; }
 
     /* ── Results ── */
     .score-hero {
@@ -670,56 +668,12 @@
       .benchmark-row .bm-label { width: 70px; font-size: 0.72rem; }
     }
 
-    /* ── PDF-specific hidden div ── */
-    #pdf-content { display: none; }
-
+    /* Printing the page directly (Cmd+P): leave out buttons and the REDCap card.
+       The PDF report itself is built in its own window by exportPDF(). */
     @media print {
-      body > *:not(#pdf-content) { display: none !important; }
-      #pdf-content {
-        display: block !important;
-        position: static !important;
-        width: 100% !important;
-        margin: 0 !important;
-        padding: 0 !important;
-      }
+      .btn-row, .redcap-card, .wizard-progress { display: none !important; }
       @page { margin: 15mm; }
-      .redcap-card { display: none !important; }
     }
-    .pdf-page {
-      font-family: Arial, sans-serif;
-      color: #1A1A2E;
-      padding: 28px 32px;
-      max-width: 750px;
-    }
-    .pdf-header-bar {
-      background: #1B4F72;
-      color: #fff;
-      padding: 18px 24px;
-      border-radius: 8px;
-      margin-bottom: 18px;
-    }
-    .pdf-header-bar h1 { font-size: 1.3rem; margin: 0 0 3px; }
-    .pdf-header-bar p { font-size: 0.8rem; opacity: 0.85; margin: 0; }
-    .pdf-section { margin-bottom: 18px; }
-    .pdf-section h2 { font-size: 1rem; font-weight: 700; color: #1B4F72; border-bottom: 2px solid #D5D8DC; padding-bottom: 5px; margin-bottom: 10px; }
-    .pdf-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .pdf-info-item { background: #F4F6F9; border-radius: 5px; padding: 8px 12px; font-size: 0.82rem; }
-    .pdf-info-item .lbl { font-weight: 700; color: #5D6D7E; font-size: 0.72rem; display: block; }
-    .pdf-score-box { text-align: center; background: #1B4F72; color: #fff; border-radius: 10px; padding: 18px; margin-bottom: 14px; }
-    .pdf-score-box .score-n { font-size: 3.5rem; font-weight: 900; line-height: 1; }
-    .pdf-score-box .score-d { font-size: 1.4rem; opacity: 0.7; }
-    .pdf-score-box .score-int { font-size: 0.95rem; margin-top: 6px; }
-    .pdf-domain-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; margin-top: 8px; }
-    .pdf-domain-table th { background: #F4F6F9; padding: 7px 10px; text-align: left; border: 1px solid #D5D8DC; font-weight: 700; }
-    .pdf-domain-table td { padding: 7px 10px; border: 1px solid #D5D8DC; }
-    .pdf-ind-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
-    .pdf-ind-table th { background: #F4F6F9; padding: 6px 8px; border: 1px solid #D5D8DC; font-weight: 700; text-align: left; }
-    .pdf-ind-table td { padding: 6px 8px; border: 1px solid #D5D8DC; vertical-align: top; }
-    .pdf-ind-table tr:nth-child(even) td { background: #FAFBFC; }
-    .pdf-benchmark-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
-    .pdf-benchmark-table th { background: #F4F6F9; padding: 7px 10px; text-align: left; border: 1px solid #D5D8DC; }
-    .pdf-benchmark-table td { padding: 7px 10px; border: 1px solid #D5D8DC; }
-    .pdf-footer { font-size: 0.7rem; color: #888; border-top: 1px solid #D5D8DC; padding-top: 10px; margin-top: 18px; }
   </style>
 </head>
 <body>
@@ -1116,7 +1070,6 @@
 </footer>
 
 <!-- Hidden PDF content -->
-<div id="pdf-content"></div>
 
 <script>
 // ═══════════════════════════════════════════════
