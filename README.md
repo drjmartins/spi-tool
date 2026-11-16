@@ -4,8 +4,6 @@ An interactive version of the Surgical Preparedness Index, which lets a hospital
 
 Live site: https://drjmartins.github.io/spi-tool/
 
-Built by the Surgical Data and Policy Lab, University of Birmingham.
-
 Reference: NIHR Global Health Unit on Global Surgery & COVIDSurg Collaborative. Surgical Preparedness Index. *The Lancet* 2022; 400:1607–17. https://doi.org/10.1016/S0140-6736(22)01846-3
 
 ## How it works
