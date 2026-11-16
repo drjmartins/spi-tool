@@ -965,12 +965,13 @@
       </div>
 
       <div class="consent-block" id="consent-block">
+        <div style="font-weight:700;font-size:0.92rem;margin-bottom:8px;color:var(--text-main);">Contribute to research (optional)</div>
         <label>
           <input type="checkbox" id="consent-checkbox">
           <span>I consent to my hospital's anonymous assessment data (scores and general hospital characteristics, but not the hospital's name or city) being securely stored and used for research purposes by the Surgical Data and Policy Lab, University of Birmingham. Data will be handled in accordance with UK GDPR and the University of Birmingham's data protection policy.</span>
         </label>
+        <div style="font-size:0.8rem;color:var(--text-muted);margin:8px 0 0 29px;">Leave this unticked to see your results without sharing any data with us.</div>
       </div>
-      <div class="validation-msg" id="consent-validation">Please tick the consent box before viewing your results.</div>
 
       <div class="btn-row" style="justify-content:space-between;margin-top:8px;">
         <button class="btn btn-outline" onclick="goToStep(2)">
@@ -992,18 +993,31 @@
       </div>
 
       <div class="card redcap-card">
-        <div class="card-title">
-          <div class="icon" style="background:#EBF5FB;">📤</div>
-          Submit to the SPI research database
+        <div id="redcap-shared">
+          <div class="card-title">
+            <div class="icon" style="background:#EBF5FB;">📤</div>
+            Submit to the SPI research database
+          </div>
+          <p style="font-size:0.88rem;line-height:1.6;margin:0 0 12px;">
+            Your answers have been copied into the University of Birmingham REDCap survey, which opened in a new tab.
+            Please check the details there and press <strong>Submit</strong> to add your assessment to the research database.
+          </p>
+          <p id="redcap-blocked" style="display:none;font-size:0.85rem;color:#B03A2E;margin:0 0 12px;">
+            Your browser blocked the new tab. Please use the button below.
+          </p>
+          <button class="btn btn-primary" onclick="openRedcap()">Open REDCap survey</button>
         </div>
-        <p style="font-size:0.88rem;line-height:1.6;margin:0 0 12px;">
-          Your answers have been copied into the University of Birmingham REDCap survey, which opened in a new tab.
-          Please check the details there and press <strong>Submit</strong> to add your assessment to the research database.
-        </p>
-        <p id="redcap-blocked" style="display:none;font-size:0.85rem;color:#B03A2E;margin:0 0 12px;">
-          Your browser blocked the new tab. Please use the button below.
-        </p>
-        <button class="btn btn-primary" onclick="openRedcap()">Open REDCap survey</button>
+        <div id="redcap-notshared" style="display:none;">
+          <div class="card-title">
+            <div class="icon" style="background:#EBF5FB;">🔒</div>
+            Your results have not been shared
+          </div>
+          <p style="font-size:0.88rem;line-height:1.6;margin:0 0 12px;">
+            Nothing from this assessment has been sent to us. If you change your mind, you can still add your anonymous
+            results to the research database. The REDCap survey will open with your answers filled in and ask for your consent.
+          </p>
+          <button class="btn btn-outline" onclick="openRedcap()">Contribute my results</button>
+        </div>
       </div>
 
       <div class="card">
@@ -1299,31 +1313,18 @@ async function validateAndGoStep4() {
     return;
   }
 
-  // Check consent
+  // Sharing is optional: only open REDCap if the user ticked the consent box.
+  // window.open must run before any await, or pop-up blockers will stop it.
   const consentChecked = document.getElementById('consent-checkbox').checked;
-  const consentBlock = document.getElementById('consent-block');
-  const consentValidation = document.getElementById('consent-validation');
-  if (!consentChecked) {
-    consentBlock.classList.add('error');
-    consentValidation.classList.add('show');
-    consentBlock.scrollIntoView({behavior:'smooth', block:'center'});
-    return;
+  lastRedcapUrl = buildRedcapUrl(consentChecked);
+  let redcapWin = null;
+  if (consentChecked) {
+    redcapWin = window.open(lastRedcapUrl, '_blank');
+    if (redcapWin) redcapWin.opener = null;
   }
-  consentBlock.classList.remove('error');
-  consentValidation.classList.remove('show');
-
-  // Calculate domain scores for submission
-  const domainScores = {};
-  DOMAINS.forEach(d => {
-    domainScores[d.id] = d.indicators.reduce((sum, id) => sum + (scores[id] || 0), 0);
-  });
-  const totalScore = Object.values(scores).reduce((a, b) => a + b, 0);
-
-  // Open the pre-filled REDCap survey (must happen before any await, or pop-up blockers will stop it)
-  lastRedcapUrl = buildRedcapUrl();
-  const redcapWin = window.open(lastRedcapUrl, '_blank');
-  if (redcapWin) redcapWin.opener = null;
-  document.getElementById('redcap-blocked').style.display = redcapWin ? 'none' : 'block';
+  document.getElementById('redcap-shared').style.display = consentChecked ? 'block' : 'none';
+  document.getElementById('redcap-notshared').style.display = consentChecked ? 'none' : 'block';
+  document.getElementById('redcap-blocked').style.display = (consentChecked && !redcapWin) ? 'block' : 'none';
 
   buildResults();
   goToStep(4);
@@ -1339,7 +1340,7 @@ const REDCAP_CODES = {
 };
 let lastRedcapUrl = null;
 
-function buildRedcapUrl() {
+function buildRedcapUrl(withConsent) {
   const v = id => (document.getElementById(id).value || '').trim();
   const params = new URLSearchParams();
   const add = (k, val) => { if (val !== '' && val !== undefined && val !== null) params.append(k, val); };
@@ -1350,13 +1351,13 @@ function buildRedcapUrl() {
   add('assessor_role', v('f-role'));
   add('assessment_date', v('f-date'));
   for (let i = 1; i <= 23; i++) add('ind_' + i, scores[i]);
-  add('consent', 1);
+  if (withConsent) add('consent', 1);
   add('tool_version', TOOL_VERSION);
   return REDCAP_SURVEY_URL + '&' + params.toString();
 }
 
 function openRedcap() {
-  const w = window.open(lastRedcapUrl || buildRedcapUrl(), '_blank');
+  const w = window.open(lastRedcapUrl || buildRedcapUrl(false), '_blank');
   if (w) w.opener = null;
 }
 
