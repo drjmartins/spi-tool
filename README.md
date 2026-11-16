@@ -11,6 +11,7 @@ Reference: NIHR Global Health Unit on Global Surgery & COVIDSurg Collaborative. 
 ## How it works
 
 - `index.html` is the whole tool: one static page with no build step. It loads Chart.js from a CDN.
+- `assets/` holds the Surgical Data and Policy Lab look shared with the NHS Waiting Times dashboards: `sdpl.css` (IBM Plex Sans, lab header bar, lab footer band, magenta heading accent), the lab seal and the Plex font files (SIL Open Font Licence, see `assets/fonts/LICENSE-IBM-Plex-Sans.txt`). Page colours are set at the top of the `<style>` block in `index.html`: navy UI, navy-shade domains and toned-down red-to-green ratings, all at least 4.5:1 contrast with white text.
 - It is hosted on GitHub Pages from the `main` branch (repo root). Pushing to `main` updates the live site within a minute or two.
 - Everything is calculated in the browser. Nothing is sent anywhere unless the user ticks the research consent box.
 
