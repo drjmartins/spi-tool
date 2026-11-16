@@ -1,8 +1,6 @@
 Variable / Field Name,Form Name,Section Header,Field Type,Field Label,"Choices, Calculations, OR Slider Labels",Field Note,Text Validation Type OR Show Slider Number,Text Validation Min,Text Validation Max,Identifier?,Branching Logic (Show field only if...),Required Field?,Custom Alignment,Question Number (surveys only),Matrix Group Name,Matrix Ranking?,Field Annotation
 record_id,spi_assessment,,text,Record ID,,,,,,,,,,,,,
-hospital_name,spi_assessment,Hospital details,text,Hospital name,,,,,,,,y,,,,,
-city,spi_assessment,,text,City,,,,,,,,,,,,,
-country,spi_assessment,,text,Country,,,,,,,,y,,,,,
+country,spi_assessment,Hospital details,text,Country,,,,,,,,y,,,,,
 income_group,spi_assessment,,dropdown,Country income group (World Bank),"1, High Income Country (HIC) | 2, Upper Middle Income Country (UMIC) | 3, Lower Middle Income Country (LMIC) | 4, Low Income Country (LIC)",,,,,,,,,,,,
 hospital_type,spi_assessment,,dropdown,Hospital type,"1, Public / Government | 2, Private / Not-for-profit | 3, Mixed / Faith-based | 4, Military / Specialist",,,,,,,,,,,,
 hospital_beds,spi_assessment,,dropdown,Number of hospital beds,"1, Fewer than 50 | 2, 50 to 99 | 3, 100 to 199 | 4, 200 to 499 | 5, 500 to 999 | 6, 1000 or more",,,,,,,,,,,,
@@ -37,5 +35,5 @@ prioritisation_score,spi_assessment,,calc,Prioritisation score (out of 10),[ind_
 systems_score,spi_assessment,,calc,Systems score (out of 40),[ind_16]+[ind_17]+[ind_18]+[ind_19]+[ind_20]+[ind_21]+[ind_22]+[ind_23],,,,,,,,,,,,
 total_score,spi_assessment,,calc,Total SPI score (out of 115),[facilities_score]+[staffing_score]+[prioritisation_score]+[systems_score],,,,,,,,,,,,
 spi_category,spi_assessment,,calc,"Preparedness category (1 Very low, 2 Low, 3 Moderate, 4 High)","if([total_score]="""","""",if([total_score]<=46,1,if([total_score]<=69,2,if([total_score]<=92,3,4))))",,,,,,,,,,,,
-consent,spi_assessment,Consent,yesno,"I consent to my hospital's anonymised assessment data (including scores and hospital details) being securely stored and used for research purposes by the NIHR Global Health Research Unit on Global Surgery, University of Birmingham. Data will be handled in accordance with UK GDPR and the University of Birmingham's data protection policy.",,,,,,,,y,,,,,
+consent,spi_assessment,Consent,yesno,"I consent to my hospital's anonymous assessment data (scores and general hospital characteristics, but not the hospital's name or city) being securely stored and used for research purposes by the Surgical Data and Policy Lab, University of Birmingham. Data will be handled in accordance with UK GDPR and the University of Birmingham's data protection policy.",,,,,,,,y,,,,,
 tool_version,spi_assessment,,text,SPI tool version,,,,,,,,,,,,,@HIDDEN-SURVEY
