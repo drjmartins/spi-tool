@@ -683,6 +683,7 @@
         padding: 0 !important;
       }
       @page { margin: 15mm; }
+      .redcap-card { display: none !important; }
     }
     .pdf-page {
       font-family: Arial, sans-serif;
@@ -723,29 +724,13 @@
 </head>
 <body>
 
-<!-- Hidden Netlify form for bot detection -->
-<form name="spi-assessment" data-netlify="true" hidden>
-  <input name="hospital-name" /><input name="city" /><input name="country" />
-  <input name="income-group" /><input name="hospital-type" /><input name="hospital-beds" />
-  <input name="assessor-role" /><input name="assessment-date" />
-  <input name="total-score" />
-  <input name="facilities-score" /><input name="staffing-score" />
-  <input name="prioritisation-score" /><input name="systems-score" />
-  <input name="ind-1" /><input name="ind-2" /><input name="ind-3" /><input name="ind-4" />
-  <input name="ind-5" /><input name="ind-6" /><input name="ind-7" /><input name="ind-8" />
-  <input name="ind-9" /><input name="ind-10" /><input name="ind-11" /><input name="ind-12" />
-  <input name="ind-13" /><input name="ind-14" /><input name="ind-15" /><input name="ind-16" />
-  <input name="ind-17" /><input name="ind-18" /><input name="ind-19" /><input name="ind-20" />
-  <input name="ind-21" /><input name="ind-22" /><input name="ind-23" />
-  <input name="consent" />
-</form>
 
 <!-- Site Header -->
 <header class="site-header">
   <div class="logo-badge">SPI</div>
   <div class="header-text">
     <h1>Surgical Preparedness Index</h1>
-    <p>NIHR Global Health Research Unit on Global Surgery &nbsp;·&nbsp; University of Birmingham</p>
+    <p>Surgical Data and Policy Lab &nbsp;·&nbsp; University of Birmingham</p>
   </div>
 </header>
 
@@ -795,7 +780,7 @@
           About the SPI
         </div>
         <p style="font-size:0.9rem;color:var(--text-muted);line-height:1.7;margin-bottom:16px;">
-          The SPI was developed by the NIHR Global Health Research Unit on Global Surgery at the University of Birmingham. It provides a standardised, quantitative measure of a hospital's capacity to maintain planned (elective) surgical services when the health system faces external shocks — such as pandemics, conflict, natural disasters, or resource shortfalls.
+          The SPI was developed by the NIHR Global Health Research Unit on Global Surgery (now the Surgical Data and Policy Lab) at the University of Birmingham. It provides a standardised, quantitative measure of a hospital's capacity to maintain planned (elective) surgical services when the health system faces external shocks — such as pandemics, conflict, natural disasters, or resource shortfalls.
         </p>
         <p style="font-size:0.9rem;color:var(--text-muted);line-height:1.7;margin-bottom:20px;">
           The index comprises <strong>23 indicators</strong> across <strong>4 domains</strong>, each scored from 1 (Very Weak) to 5 (Very Strong), yielding a total score of 23–115.
@@ -894,11 +879,12 @@
 
         <div class="form-grid" id="hospital-form">
           <div class="form-group full-width">
-            <label>Hospital Name <span class="required">*</span></label>
+            <label>Hospital Name <span style="font-weight:400;color:var(--text-muted);">(optional)</span></label>
             <input type="text" class="form-control" id="f-hospital" placeholder="e.g. Muhimbili National Hospital" />
+            <div style="font-size:0.78rem;color:var(--text-muted);margin-top:4px;">Hospital name and city appear only on your PDF report. They are never sent to the research database, so your assessment stays anonymous.</div>
           </div>
           <div class="form-group">
-            <label>City / Region <span class="required">*</span></label>
+            <label>City / Region <span style="font-weight:400;color:var(--text-muted);">(optional)</span></label>
             <input type="text" class="form-control" id="f-city" placeholder="e.g. Dar es Salaam" />
           </div>
           <div class="form-group">
@@ -981,7 +967,7 @@
       <div class="consent-block" id="consent-block">
         <label>
           <input type="checkbox" id="consent-checkbox">
-          <span>I consent to my hospital's anonymised assessment data (including scores and hospital details) being securely stored and used for research purposes by the NIHR Global Health Research Unit on Global Surgery, University of Birmingham. Data will be handled in accordance with UK GDPR and the University of Birmingham's data protection policy.</span>
+          <span>I consent to my hospital's anonymous assessment data (scores and general hospital characteristics, but not the hospital's name or city) being securely stored and used for research purposes by the Surgical Data and Policy Lab, University of Birmingham. Data will be handled in accordance with UK GDPR and the University of Birmingham's data protection policy.</span>
         </label>
       </div>
       <div class="validation-msg" id="consent-validation">Please tick the consent box before viewing your results.</div>
@@ -1003,6 +989,21 @@
 
       <div class="card" id="results-section">
         <!-- Score hero injected by JS -->
+      </div>
+
+      <div class="card redcap-card">
+        <div class="card-title">
+          <div class="icon" style="background:#EBF5FB;">📤</div>
+          Submit to the SPI research database
+        </div>
+        <p style="font-size:0.88rem;line-height:1.6;margin:0 0 12px;">
+          Your answers have been copied into the University of Birmingham REDCap survey, which opened in a new tab.
+          Please check the details there and press <strong>Submit</strong> to add your assessment to the research database.
+        </p>
+        <p id="redcap-blocked" style="display:none;font-size:0.85rem;color:#B03A2E;margin:0 0 12px;">
+          Your browser blocked the new tab. Please use the button below.
+        </p>
+        <button class="btn btn-primary" onclick="openRedcap()">Open REDCap survey</button>
       </div>
 
       <div class="card">
@@ -1085,7 +1086,7 @@
 
 <!-- Footer -->
 <footer>
-  <div class="footer-nihr">NIHR Global Health Research Unit on Global Surgery, University of Birmingham</div>
+  <div class="footer-nihr">Surgical Data and Policy Lab, University of Birmingham</div>
   <div style="margin-top:4px;">
     Reference: NIHR Global Health Unit on Global Surgery &amp; COVIDSurg Collaborative.
     <em>The Lancet</em> 2022; 400:1607–17.
@@ -1196,7 +1197,7 @@ function goToStep(n) {
 //  STEP 2 VALIDATION
 // ═══════════════════════════════════════════════
 function validateAndGoStep3() {
-  const required = ['f-hospital','f-city','f-country','f-income','f-type','f-beds','f-date'];
+  const required = ['f-country','f-income','f-type','f-beds','f-date'];
   let valid = true;
   required.forEach(id => {
     const el = document.getElementById(id);
@@ -1318,37 +1319,45 @@ async function validateAndGoStep4() {
   });
   const totalScore = Object.values(scores).reduce((a, b) => a + b, 0);
 
-  // Submit to Netlify Forms (non-blocking, 5s timeout)
-  const formData = new FormData();
-  formData.append('form-name', 'spi-assessment');
-  formData.append('hospital-name', document.getElementById('f-hospital').value || '');
-  formData.append('city', document.getElementById('f-city').value || '');
-  formData.append('country', document.getElementById('f-country').value || '');
-  formData.append('income-group', document.getElementById('f-income').value || '');
-  formData.append('hospital-type', document.getElementById('f-type').value || '');
-  formData.append('hospital-beds', document.getElementById('f-beds').value || '');
-  formData.append('assessor-role', document.getElementById('f-role').value || '');
-  formData.append('assessment-date', document.getElementById('f-date').value || '');
-  formData.append('total-score', totalScore);
-  formData.append('facilities-score', domainScores['facilities'] || 0);
-  formData.append('staffing-score', domainScores['staffing'] || 0);
-  formData.append('prioritisation-score', domainScores['prioritisation'] || 0);
-  formData.append('systems-score', domainScores['systems'] || 0);
-  for (let i = 1; i <= 23; i++) formData.append('ind-' + i, scores[i] || 0);
-  formData.append('consent', 'yes');
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 5000);
-  try {
-    await fetch('/', { method: 'POST', body: formData, signal: controller.signal });
-  } catch (e) {
-    console.warn('Form submission failed:', e);
-  } finally {
-    clearTimeout(timeout);
-  }
+  // Open the pre-filled REDCap survey (must happen before any await, or pop-up blockers will stop it)
+  lastRedcapUrl = buildRedcapUrl();
+  const redcapWin = window.open(lastRedcapUrl, '_blank');
+  if (redcapWin) redcapWin.opener = null;
+  document.getElementById('redcap-blocked').style.display = redcapWin ? 'none' : 'block';
 
   buildResults();
   goToStep(4);
+}
+
+// ── REDCap submission (pre-filled public survey; no API token in the page)
+const REDCAP_SURVEY_URL = 'https://globalsurgery.redcap.bham.ac.uk/surveys/?s=LACFW9WMLNF9PJWP';
+const TOOL_VERSION = '2026-11';
+const REDCAP_CODES = {
+  income: {HIC:1, UMIC:2, LMIC:3, LIC:4},
+  type: {Public:1, Private:2, Mixed:3, Military:4},
+  beds: {'<50':1, '50-99':2, '100-199':3, '200-499':4, '500-999':5, '≥1000':6}
+};
+let lastRedcapUrl = null;
+
+function buildRedcapUrl() {
+  const v = id => (document.getElementById(id).value || '').trim();
+  const params = new URLSearchParams();
+  const add = (k, val) => { if (val !== '' && val !== undefined && val !== null) params.append(k, val); };
+  add('country', v('f-country'));
+  add('income_group', REDCAP_CODES.income[v('f-income')]);
+  add('hospital_type', REDCAP_CODES.type[v('f-type')]);
+  add('hospital_beds', REDCAP_CODES.beds[v('f-beds')]);
+  add('assessor_role', v('f-role'));
+  add('assessment_date', v('f-date'));
+  for (let i = 1; i <= 23; i++) add('ind_' + i, scores[i]);
+  add('consent', 1);
+  add('tool_version', TOOL_VERSION);
+  return REDCAP_SURVEY_URL + '&' + params.toString();
+}
+
+function openRedcap() {
+  const w = window.open(lastRedcapUrl || buildRedcapUrl(), '_blank');
+  if (w) w.opener = null;
 }
 
 function getInterpretation(score) {
@@ -1582,14 +1591,14 @@ function exportPDF() {
   <div class="pdf-page">
     <div class="pdf-header-bar">
       <h1>Surgical Preparedness Index (SPI) — Assessment Report</h1>
-      <p>NIHR Global Health Research Unit on Global Surgery, University of Birmingham</p>
+      <p>Surgical Data and Policy Lab, University of Birmingham</p>
     </div>
 
     <div class="pdf-section">
       <h2>Hospital Information</h2>
       <div class="pdf-info-grid">
-        <div class="pdf-info-item"><span class="lbl">Hospital</span>${hospital}</div>
-        <div class="pdf-info-item"><span class="lbl">City / Region</span>${city}</div>
+        <div class="pdf-info-item"><span class="lbl">Hospital</span>${hospital || 'Not specified'}</div>
+        <div class="pdf-info-item"><span class="lbl">City / Region</span>${city || 'Not specified'}</div>
         <div class="pdf-info-item"><span class="lbl">Country</span>${country}</div>
         <div class="pdf-info-item"><span class="lbl">Income Group</span>${income}</div>
         <div class="pdf-info-item"><span class="lbl">Hospital Type</span>${type}</div>
@@ -1643,7 +1652,7 @@ function exportPDF() {
       <strong>Reference:</strong> NIHR Global Health Unit on Global Surgery &amp; COVIDSurg Collaborative.
       Surgical Preparedness Index. <em>The Lancet</em> 2022; 400:1607–17.
       https://doi.org/10.1016/S0140-6736(22)01846-3<br/>
-      Developed by the NIHR Global Health Research Unit on Global Surgery, University of Birmingham.
+      Developed by the NIHR Global Health Research Unit on Global Surgery (now the Surgical Data and Policy Lab), University of Birmingham.
       Licensed under CC BY 4.0.
       This report was generated on ${new Date().toLocaleDateString('en-GB', {day:'numeric',month:'long',year:'numeric'})}.
     </div>
