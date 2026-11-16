@@ -902,6 +902,7 @@
               <option value="LMIC">Lower Middle Income Country (LMIC)</option>
               <option value="LIC">Low Income Country (LIC)</option>
             </select>
+            <div id="income-note" style="font-size:0.78rem;color:var(--text-muted);margin-top:4px;"></div>
           </div>
           <div class="form-group">
             <label>Hospital Type <span class="required">*</span></label>
@@ -1422,6 +1423,32 @@ const COUNTRY_NAMES = Object.fromEntries(COUNTRIES);
   const sel = document.getElementById('f-country');
   COUNTRIES.forEach(([code, name]) => sel.add(new Option(name, code)));
 })();
+
+// World Bank income groups, FY2027 (July 2026 release, based on 2025 GNI per capita).
+// Source: datahelpdesk.worldbank.org/knowledgebase/articles/906519. Update each July. Same data as data/wb_income_fy2027.json.
+const WB_INCOME_YEAR = '2026/27';
+const WB_INCOME = {};
+Object.entries({
+  HIC: 'ABW AND ARE ASM ATG AUS AUT BEL BGR BHR BHS BMU BRB BRN CAN CHE CHL CRI CUW CYM CYP CZE DEU DNK ESP EST FIN FRA FRO GBR GGY GIB GRC GRL GUM GUY HKG HRV HUN IMN IRL ISL ISR ITA JEY JPN KNA KOR KWT LIE LTU LUX LVA MAC MAF MCO MLT MNP NCL NLD NOR NRU NZL OMN PAN PLW POL PRI PRT PYF QAT ROU RUS SAU SGP SMR SVK SVN SWE SXM SYC TCA TTO TWN URY USA VGB VIR',
+  UMIC: 'ALB ARG ARM AZE BIH BLR BLZ BRA BWA CHN COL CPV CUB DMA DOM DZA ECU FJI FSM GAB GEO GNQ GRD GTM IDN IRN IRQ JAM JOR KAZ LBY LCA LKA MDA MDV MEX MHL MKD MNE MNG MUS MYS PER PHL PRY SLV SRB SUR THA TKM TON TUR TUV UKR VCT VNM WSM XKX ZAF',
+  LMIC: 'AGO BEN BGD BOL BTN CIV CMR COG COM DJI EGY GHA GIN HND HTI IND KEN KGZ KHM KIR LAO LBN LSO MAR MMR MRT NAM NGA NIC NPL PAK PNG PSE SEN SLB STP SWZ TGO TJK TLS TUN TZA UZB VEN VUT ZMB ZWE',
+  LIC: 'AFG BDI BFA CAF COD ERI ETH GMB GNB LBR MDG MLI MOZ MWI NER PRK RWA SDN SLE SOM SSD SYR TCD UGA YEM'
+}).forEach(([g, codes]) => codes.split(' ').forEach(c => { WB_INCOME[c] = g; }));
+
+function updateIncomeFromCountry() {
+  const code = document.getElementById('f-country').value;
+  const income = document.getElementById('f-income');
+  const note = document.getElementById('income-note');
+  if (!code) { note.textContent = ''; return; }
+  if (WB_INCOME[code]) {
+    income.value = WB_INCOME[code];
+    income.classList.remove('error');
+    note.textContent = 'Filled in from the World Bank classification for ' + WB_INCOME_YEAR + '. You can change it if needed.';
+  } else {
+    note.textContent = 'The World Bank does not classify this country. Please choose the closest group.';
+  }
+}
+document.getElementById('f-country').addEventListener('change', updateIncomeFromCountry);
 
 const RATING_LABELS = {1:'Very Weak', 2:'Weak', 3:'Moderate', 4:'Strong', 5:'Very Strong'};
 
